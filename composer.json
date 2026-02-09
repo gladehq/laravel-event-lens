@@ -1,0 +1,48 @@
+{
+    "name": "gladehq/laravel-event-lens",
+    "description": "Deep observability for Laravel Events and Listeners with execution tracing and waterfall visualization.",
+    "keywords": ["laravel", "events", "monitoring", "observability", "performance"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "GladeHQ",
+            "email": "hello@gladehq.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/events": "^10.0|^11.0",
+        "illuminate/support": "^10.0|^11.0"
+    },
+    "require-dev": {
+        "pestphp/pest": "^2.0|^3.0",
+        "pestphp/pest-plugin-laravel": "^2.0|^3.0",
+        "orchestra/testbench": "^8.0|^9.0",
+        "illuminate/database": "^10.0|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "GladeHQ\\LaravelEventLens\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "GladeHQ\\LaravelEventLens\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "GladeHQ\\LaravelEventLens\\EventLensServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
