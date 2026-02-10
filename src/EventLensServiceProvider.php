@@ -56,10 +56,6 @@ class EventLensServiceProvider extends ServiceProvider
             ], 'event-lens-config');
 
             $this->publishes([
-                __DIR__.'/../resources/event-lens.css' => public_path('vendor/event-lens/event-lens.css'),
-            ], 'event-lens-assets');
-
-            $this->publishes([
                 __DIR__.'/../resources/views' => resource_path('views/vendor/event-lens'),
             ], 'event-lens-views');
 
