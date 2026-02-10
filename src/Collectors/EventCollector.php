@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace GladeHQ\LaravelEventLens\Collectors;
 
 use Illuminate\Database\Eloquent\Model;

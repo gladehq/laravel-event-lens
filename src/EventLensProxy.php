@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace GladeHQ\LaravelEventLens;
 
 use Illuminate\Contracts\Events\Dispatcher as DispatcherContract;
