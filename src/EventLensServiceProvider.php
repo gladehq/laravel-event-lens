@@ -66,6 +66,8 @@ class EventLensServiceProvider extends ServiceProvider
 
             $this->commands([
                 Commands\InstallCommand::class,
+                Commands\StatusCommand::class,
+                Commands\ClearCommand::class,
                 Commands\PruneEventLensCommand::class,
             ]);
         }
