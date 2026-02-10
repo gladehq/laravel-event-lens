@@ -15,19 +15,40 @@ class EventCollector
         return $this->serialize($data);
     }
 
-    public function collectModelChanges($event): array
+    /**
+     * Single reflection pass to collect model changes AND model identity.
+     *
+     * @return array{model_changes: array, model_type: string|null, model_id: int|string|null}
+     */
+    public function collectModelInfo($event): array
     {
         $changes = [];
+        $modelType = null;
+        $modelId = null;
+
         if (is_object($event)) {
             foreach ((new \ReflectionClass($event))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
                 $value = $property->getValue($event);
 
-                if ($value instanceof Model && $value->isDirty()) {
-                    $changes[$property->getName()] = $value->getDirty();
+                if ($value instanceof Model) {
+                    // Capture first model for polymorphic tracking
+                    if ($modelType === null) {
+                        $modelType = get_class($value);
+                        $modelId = $value->getKey();
+                    }
+
+                    if ($value->isDirty()) {
+                        $changes[$property->getName()] = $value->getDirty();
+                    }
                 }
             }
         }
-        return $changes;
+
+        return [
+            'model_changes' => $changes,
+            'model_type' => $modelType,
+            'model_id' => $modelId,
+        ];
     }
 
     protected function serialize($data): array

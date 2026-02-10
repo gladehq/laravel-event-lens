@@ -85,7 +85,7 @@ class EventRecorder
                 $collectedPayload['__context'] = ['file' => $backtrace];
             }
 
-            $modelChanges = $this->collector->collectModelChanges($eventObj);
+            $modelInfo = $this->collector->collectModelInfo($eventObj);
 
             $this->buffer->push([
                 'event_id' => $eventId,
@@ -95,7 +95,9 @@ class EventRecorder
                 'listener_name' => $listenerName,
                 'payload' => $collectedPayload,
                 'side_effects' => $sideEffects,
-                'model_changes' => $modelChanges ?: null,
+                'model_changes' => $modelInfo['model_changes'] ?: null,
+                'model_type' => $modelInfo['model_type'],
+                'model_id' => $modelInfo['model_id'],
                 'exception' => $exception ? substr($exception, 0, 2048) : null,
                 'execution_time_ms' => $duration,
                 'happened_at' => now(),

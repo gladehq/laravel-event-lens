@@ -6,6 +6,7 @@ namespace GladeHQ\LaravelEventLens\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
  * @property int $id
@@ -53,6 +54,11 @@ class EventLog extends Model
     public function children()
     {
         return $this->hasMany(self::class, 'parent_event_id', 'event_id');
+    }
+
+    public function model(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     // -- Query Scopes --
