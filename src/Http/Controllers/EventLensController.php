@@ -14,6 +14,14 @@ class EventLensController extends Controller
 {
     public function index(Request $request)
     {
+        $request->validate([
+            'event' => 'nullable|string|max:255',
+            'correlation' => 'nullable|string|max:255',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+            'slow' => 'nullable|boolean',
+        ]);
+
         $events = EventLog::roots()
             ->forEvent($request->get('event'))
             ->forCorrelation($request->get('correlation'))
@@ -45,6 +53,11 @@ class EventLensController extends Controller
 
     public function statistics(Request $request)
     {
+        $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+        ]);
+
         $startDate = $request->get('start_date', now()->subDays(7));
         $endDate = $request->get('end_date', now());
 
@@ -90,6 +103,10 @@ class EventLensController extends Controller
 
     public function latest(Request $request)
     {
+        $request->validate([
+            'after_id' => 'nullable|integer|min:1',
+        ]);
+
         $events = EventLog::roots()
             ->when($request->get('after_id'), fn ($q, $id) => $q->where('id', '>', $id))
             ->latest('id')

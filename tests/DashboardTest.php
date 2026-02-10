@@ -37,6 +37,28 @@ it('allows dashboard access when authorization returns true', function () {
     get(route('event-lens.index'))->assertOk();
 });
 
+// -- Validation Tests --
+
+it('rejects invalid date format on index', function () {
+    get(route('event-lens.index', ['start_date' => 'not-a-date']))
+        ->assertInvalid(['start_date']);
+});
+
+it('rejects oversized event filter string', function () {
+    get(route('event-lens.index', ['event' => str_repeat('x', 256)]))
+        ->assertInvalid(['event']);
+});
+
+it('rejects invalid date format on statistics', function () {
+    get(route('event-lens.statistics', ['start_date' => 'not-a-date']))
+        ->assertInvalid(['start_date']);
+});
+
+it('rejects invalid after_id on latest endpoint', function () {
+    get(route('event-lens.api.latest', ['after_id' => 'abc']))
+        ->assertInvalid(['after_id']);
+});
+
 // -- Index / Stream Tests --
 
 it('can filter events by name', function () {
