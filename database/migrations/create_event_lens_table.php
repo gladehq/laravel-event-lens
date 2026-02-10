@@ -28,7 +28,7 @@ return new class extends Migration
             $table->json('side_effects')->nullable(); // db_count, mail_count
             $table->json('model_changes')->nullable(); // dirty states
             
-            $table->unsignedInteger('execution_time_ms');
+            $table->double('execution_time_ms');
             $table->timestamp('happened_at');
             $table->timestamps();
 

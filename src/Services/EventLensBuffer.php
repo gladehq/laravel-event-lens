@@ -58,8 +58,10 @@ class EventLensBuffer
             $this->events = [];
             
         } catch (\Throwable $e) {
-            echo "BUFFER EXCEPTION: " . $e->getMessage() . "\n";
-            throw $e; // Throw to fail test loudly
+            if (config('app.debug')) {
+                report($e);
+            }
+            $this->events = [];
         }
     }
 }
