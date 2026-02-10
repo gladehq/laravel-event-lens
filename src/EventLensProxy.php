@@ -27,10 +27,6 @@ class EventLensProxy implements DispatcherContract
 
     protected function wrapListener($event, $listener)
     {
-        if (! config('event-lens.enabled', true)) {
-            return $listener;
-        }
-
         return function (...$payload) use ($event, $listener) {
              $listenerName = $this->resolveListenerName($listener);
 
