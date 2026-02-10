@@ -17,6 +17,10 @@
                     <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">DB Queries</p>
                     <p class="text-xl font-bold text-gray-900">{{ $totalQueries }}</p>
                 </div>
+                <div class="text-right">
+                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Mails Sent</p>
+                    <p class="text-xl font-bold text-gray-900">{{ $totalMails }}</p>
+                </div>
             </div>
         </div>
     </div>
@@ -30,7 +34,7 @@
         
         <div class="divide-y divide-gray-200">
             @foreach($tree as $node)
-                @include('event-lens::partials.node', ['node' => $node, 'depth' => 0])
+                @include('event-lens::partials.node', ['node' => $node, 'depth' => 0, 'totalDuration' => $totalDuration])
             @endforeach
         </div>
     </div>

@@ -1,12 +1,20 @@
-<div class="hover:bg-gray-50 transition relative group">
+@php $hasChildren = $node->children && $node->children->count(); @endphp
+
+<div x-data="{ open: true }" class="hover:bg-gray-50 transition relative group">
     <div class="px-6 py-4 flex items-center justify-between">
         <div class="w-1/2 flex items-center gap-3" style="padding-left: {{ $depth * 2 }}rem">
-            @if($depth > 0)
-                <div class="text-gray-300">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            @if($hasChildren)
+                <button @click="open = !open" class="text-gray-400 hover:text-gray-600 focus:outline-none">
+                    <svg :class="open ? 'rotate-90' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            @elseif($depth > 0)
+                <div class="w-4 h-4 flex items-center justify-center text-gray-300">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="2"/></svg>
                 </div>
             @endif
-            
+
             <div class="overflow-hidden">
                 <div class="flex items-center gap-2">
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
@@ -14,23 +22,13 @@
                     </span>
                     @if($depth == 0)
                         <span class="text-xs text-gray-400">listening to</span>
-                        <span class="font-mono text-xs text-indigo-600 truncate" title="{{ $node->event_name }}">{{ Str::limit($node->event_name, 40) }}</span>
                     @endif
+                    <a href="{{ route('event-lens.detail', $node->event_id) }}"
+                       class="font-mono text-xs text-indigo-600 hover:underline truncate"
+                       title="{{ $node->event_name }}">
+                        {{ Str::limit($node->event_name, 40) }}
+                    </a>
                 </div>
-                
-                {{-- Payload Preview (collapsible ideally, just showing count for now) --}}
-                @if(!empty($node->payload))
-                    <div class="mt-1 text-xs text-gray-400">
-                        Payload: {{ json_encode($node->payload) }}
-                    </div>
-                @endif
-
-                {{-- Model Changes --}}
-                @if(!empty($node->model_changes))
-                     <div class="mt-1 text-xs text-amber-600 font-mono">
-                         Diff: {{ json_encode($node->model_changes) }}
-                     </div>
-                @endif
             </div>
         </div>
 
@@ -51,12 +49,20 @@
             <span class="font-mono text-sm {{ $node->execution_time_ms > 100 ? 'text-red-600 font-bold' : 'text-gray-600' }}">
                 {{ number_format($node->execution_time_ms, 2) }} ms
             </span>
+            {{-- Duration bar relative to total --}}
+            @if(isset($totalDuration) && $totalDuration > 0)
+                <div class="mt-1 w-full bg-gray-100 rounded-full h-1.5">
+                    <div class="bg-indigo-500 h-1.5 rounded-full" style="width: {{ min(100, ($node->execution_time_ms / $totalDuration) * 100) }}%"></div>
+                </div>
+            @endif
         </div>
     </div>
 </div>
 
-@if($node->children && $node->children->count())
-    @foreach($node->children as $child)
-        @include('event-lens::partials.node', ['node' => $child, 'depth' => $depth + 1])
-    @endforeach
+@if($hasChildren)
+    <div x-show="open" x-cloak class="divide-y divide-gray-100">
+        @foreach($node->children as $child)
+            @include('event-lens::partials.node', ['node' => $child, 'depth' => $depth + 1, 'totalDuration' => $totalDuration ?? 0])
+        @endforeach
+    </div>
 @endif
