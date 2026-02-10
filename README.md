@@ -83,21 +83,7 @@ EventLens automatically resets all singleton state (buffer, recorder, watchers) 
 
 ## Queue Tracing
 
-Correlation IDs propagate automatically into queued job payloads. Events dispatched inside a job inherit the parent correlation ID, linking the full trace across sync and async boundaries.
-
-For per-job opt-in middleware:
-
-```php
-use GladeHQ\LaravelEventLens\Queue\EventLensJobMiddleware;
-
-class MyJob
-{
-    public function middleware(): array
-    {
-        return [new EventLensJobMiddleware()];
-    }
-}
-```
+Correlation IDs propagate automatically into queued job payloads. Events dispatched inside a job inherit the parent correlation ID, linking the full trace across sync and async boundaries. No configuration needed.
 
 ## HasEventLens Trait
 
