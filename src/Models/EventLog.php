@@ -75,7 +75,11 @@ class EventLog extends Model
 
     public function scopeForEvent(Builder $query, ?string $eventName): Builder
     {
-        return $query->when($eventName, fn ($q) => $q->where('event_name', 'like', "%{$eventName}%"));
+        return $query->when($eventName, function ($q) use ($eventName) {
+            $escaped = str_replace(['%', '_'], ['\%', '\_'], $eventName);
+
+            return $q->whereRaw("event_name LIKE ? ESCAPE '\\'", ["%{$escaped}%"]);
+        });
     }
 
     public function scopeSlow(Builder $query, float $threshold = 100.0): Builder

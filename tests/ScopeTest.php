@@ -38,6 +38,17 @@ it('scopes by event name with like match', function () {
         ->and(EventLog::forEvent(null)->count())->toBe(2);
 });
 
+it('escapes LIKE wildcards in event name search', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App%Events', 'listener_name' => 'Closure', 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'App\Events\OrderPlaced', 'listener_name' => 'Closure', 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    // Searching for literal "%" should only match the event containing "%", not act as wildcard
+    expect(EventLog::forEvent('App%Events')->count())->toBe(1)
+        ->and(EventLog::forEvent('App%Events')->first()->event_id)->toBe('e1');
+});
+
 it('scopes by slow threshold', function () {
     EventLog::insert([
         ['event_id' => 'fast', 'correlation_id' => 'c1', 'event_name' => 'Fast', 'listener_name' => 'Closure', 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],

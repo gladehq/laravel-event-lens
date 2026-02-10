@@ -104,7 +104,7 @@ class EventLensController extends Controller
         $branch = [];
 
         foreach ($events as $event) {
-            if ($event->parent_event_id == $parentId) {
+            if ($event->parent_event_id === $parentId) {
                 $children = $this->buildTree($events, $event->event_id);
                 $event->setRelation('children', collect($children));
                 $branch[] = $event;
