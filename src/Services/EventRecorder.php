@@ -53,14 +53,19 @@ class EventRecorder
             }
         }
 
+        $exception = null;
+
         try {
             return $callback();
+        } catch (\Throwable $e) {
+            $exception = get_class($e) . ': ' . $e->getMessage();
+            throw $e;
         } finally {
             $duration = (microtime(true) - $startTime) * 1000;
             $sideEffects = $this->watcher->stop();
             array_pop($this->callStack);
 
-            $this->persist($eventId, $correlationId, $parentEventId, $eventName, $listenerName, $eventPayload, $sideEffects, $duration, $backtrace);
+            $this->persist($eventId, $correlationId, $parentEventId, $eventName, $listenerName, $eventPayload, $sideEffects, $duration, $backtrace, $exception);
         }
     }
 
@@ -69,7 +74,7 @@ class EventRecorder
         $this->callStack = [];
     }
 
-    protected function persist($eventId, $correlationId, $parentEventId, $eventName, $listenerName, $eventPayload, $sideEffects, $duration, $backtrace)
+    protected function persist($eventId, $correlationId, $parentEventId, $eventName, $listenerName, $eventPayload, $sideEffects, $duration, $backtrace, $exception = null)
     {
         try {
             $eventObj = is_array($eventPayload) && isset($eventPayload[0]) ? $eventPayload[0] : $eventPayload;
@@ -91,6 +96,7 @@ class EventRecorder
                 'payload' => $collectedPayload,
                 'side_effects' => $sideEffects,
                 'model_changes' => $modelChanges ?: null,
+                'exception' => $exception ? substr($exception, 0, 2048) : null,
                 'execution_time_ms' => $duration,
                 'happened_at' => now(),
             ]);

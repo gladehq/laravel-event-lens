@@ -28,6 +28,9 @@
                        title="{{ $node->event_name }}">
                         {{ Str::limit($node->event_name, 40) }}
                     </a>
+                    @if($node->exception)
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700" title="{{ e($node->exception) }}">ERR</span>
+                    @endif
                 </div>
             </div>
         </div>

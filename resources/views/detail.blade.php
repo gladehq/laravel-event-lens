@@ -69,6 +69,18 @@
         </div>
     </div>
 
+    {{-- Exception --}}
+    @if($event->exception)
+        <div class="bg-red-50 border border-red-200 rounded-lg shadow-sm overflow-hidden mb-6">
+            <div class="px-5 py-4 border-b border-red-200">
+                <h2 class="text-sm font-semibold text-red-700">Exception</h2>
+            </div>
+            <div class="p-5">
+                <pre class="text-xs font-mono text-red-800 bg-red-100 rounded-lg p-4 overflow-x-auto">{{ e($event->exception) }}</pre>
+            </div>
+        </div>
+    @endif
+
     {{-- Payload --}}
     <div x-data="{ showPayload: true }" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
         <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between cursor-pointer" @click="showPayload = !showPayload">

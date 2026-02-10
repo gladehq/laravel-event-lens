@@ -211,6 +211,54 @@ it('redacts keys case-insensitively', function () {
     expect($data['name'])->toBe('visible');
 });
 
+it('captures exception message when listener throws', function () {
+    Event::listen('event.exception', function () {
+        throw new \RuntimeException('Something broke');
+    });
+
+    try {
+        Event::dispatch('event.exception');
+    } catch (\RuntimeException $e) {
+        // expected
+    }
+
+    app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
+
+    $log = EventLog::where('exception', '!=', null)->first();
+    expect($log)->not->toBeNull();
+    expect($log->exception)->toContain('RuntimeException');
+    expect($log->exception)->toContain('Something broke');
+});
+
+it('stores null exception on success', function () {
+    Event::listen('event.success', fn() => true);
+    Event::dispatch('event.success');
+
+    app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
+
+    $log = EventLog::first();
+    expect($log->exception)->toBeNull();
+});
+
+it('truncates long exception messages to 2048 chars', function () {
+    $longMessage = str_repeat('x', 5000);
+
+    Event::listen('event.long-ex', function () use ($longMessage) {
+        throw new \RuntimeException($longMessage);
+    });
+
+    try {
+        Event::dispatch('event.long-ex');
+    } catch (\RuntimeException $e) {
+        // expected
+    }
+
+    app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
+
+    $log = EventLog::where('exception', '!=', null)->first();
+    expect(strlen($log->exception))->toBeLessThanOrEqual(2048);
+});
+
 it('handles scalar payload without TypeError', function () {
     Event::listen('event.scalar', fn() => true);
     Event::dispatch('event.scalar', ['just a string']);
