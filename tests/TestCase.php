@@ -19,9 +19,7 @@ class TestCase extends Orchestra
         config()->set('database.default', 'testing');
         config()->set('app.key', 'base64:Hupx3yAySikrM2Rower0B1HKM67yUKikav9t5R1er54=');
 
-        /*
-        $migration = include __DIR__.'/../database/migrations/create_event_lens_table.php';
-        $migration->up();
-        */
+        // Allow dashboard access in tests
+        config()->set('event-lens.authorization', fn () => true);
     }
 }

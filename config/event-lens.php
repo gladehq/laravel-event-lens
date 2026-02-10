@@ -36,7 +36,7 @@ return [
         'App\\Events\\*',
         // 'Illuminate\\Auth\\Events\\Login',
     ],
-    
+
     /*
     |--------------------------------------------------------------------------
     | Capture Backtrace
@@ -63,15 +63,62 @@ return [
         'secret',
         'api_key',
     ],
-    
+
     /*
-     * Database connection to use for storing events. 
-     * null = default application connection.
-     */
+    |--------------------------------------------------------------------------
+    | Dashboard Authorization
+    |--------------------------------------------------------------------------
+    |
+    | This callback determines who can access the EventLens dashboard.
+    | Return true to allow access. Default: allow only in local environment.
+    |
+    | Example:
+    |   'authorization' => function ($user) {
+    |       return $user && $user->isAdmin();
+    |   },
+    |
+    */
+    'authorization' => null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard Middleware
+    |--------------------------------------------------------------------------
+    |
+    | Middleware applied to all EventLens dashboard routes.
+    | The Authorize middleware is always appended automatically.
+    |
+    */
+    'middleware' => ['web'],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard Path
+    |--------------------------------------------------------------------------
+    |
+    | The URL prefix for the EventLens dashboard.
+    |
+    */
+    'path' => 'event-lens',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Database Connection
+    |--------------------------------------------------------------------------
+    |
+    | Database connection to use for storing events.
+    | null = default application connection.
+    |
+    */
     'database_connection' => null,
-    
+
     /*
-     * Pruning configuration
-     */
+    |--------------------------------------------------------------------------
+    | Pruning
+    |--------------------------------------------------------------------------
+    |
+    | Number of days to retain event data before pruning.
+    |
+    */
     'prune_after_days' => 7,
 ];
