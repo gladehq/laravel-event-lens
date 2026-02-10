@@ -83,16 +83,12 @@ it('can view the waterfall', function () {
     event(new TestEvent());
     app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
     $log = EventLog::first();
-    
-    // Sometimes view test fails in CLI environments due to route/asset loading
-    // We just verify the log exists for now.
+
     expect($log)->not->toBeNull();
-    
-    // Allow view check to fail gracefully if assets missing
-    try {
-        get(route('event-lens.show', $log->correlation_id))
-            ->assertOk();
-    } catch (\Throwable $e) {}
+
+    get(route('event-lens.show', $log->correlation_id))
+        ->assertOk()
+        ->assertViewIs('event-lens::waterfall');
 });
 
 it('can capture backtrace when enabled', function () {
@@ -134,5 +130,5 @@ it('provides a polling api', function () {
     
     get(route('event-lens.api.latest'))
         ->assertOk()
-        ->assertJsonStructure(['events' => [['id', 'event_name', 'execution_time_ms']]]);
+        ->assertJsonStructure(['data' => [['id', 'event_name', 'execution_time_ms']]]);
 });
