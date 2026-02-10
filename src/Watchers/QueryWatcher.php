@@ -40,4 +40,9 @@ class QueryWatcher implements WatcherInterface
 
         return ['queries' => $count];
     }
+
+    public function reset(): void
+    {
+        $this->stack = [];
+    }
 }

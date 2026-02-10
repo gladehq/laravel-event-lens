@@ -137,4 +137,15 @@ return [
     |
     */
     'prune_after_days' => 7,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Buffer Size
+    |--------------------------------------------------------------------------
+    |
+    | Maximum number of events to hold in memory before auto-flushing.
+    | Prevents unbounded memory growth in high-throughput scenarios.
+    |
+    */
+    'buffer_size' => 1000,
 ];

@@ -122,14 +122,19 @@ class EventRecorder
         }
     }
 
+    public function reset(): void
+    {
+        $this->callStack = [];
+    }
+
     protected function shouldRecord($name, $id): bool
     {
         if (! Str::is(config('event-lens.namespaces', []), $name)) return false;
-        
+
         $rate = config('event-lens.sampling_rate', 0.1);
         if ($rate >= 1.0) return true;
         if ($rate <= 0.0) return false;
-        
+
         return ((abs(crc32($id)) % 100) / 100) <= $rate;
     }
 }

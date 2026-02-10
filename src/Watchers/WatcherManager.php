@@ -46,4 +46,11 @@ class WatcherManager
 
         return $results;
     }
+
+    public function reset(): void
+    {
+        foreach ($this->watchers as $watcher) {
+            $watcher->reset();
+        }
+    }
 }

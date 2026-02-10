@@ -22,4 +22,9 @@ interface WatcherInterface
      * @return array<string, int>
      */
     public function stop(): array;
+
+    /**
+     * Reset all internal state (for Octane compatibility).
+     */
+    public function reset(): void;
 }

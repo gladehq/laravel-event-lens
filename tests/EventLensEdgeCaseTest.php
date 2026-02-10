@@ -189,3 +189,37 @@ it('uses attributesToArray for Eloquent models to prevent N+1', function () {
     // We just verify it recorded without crashing and captured SOME attributes
     expect($log->event_name)->toBe('event.model');
 });
+
+it('redacts keys case-insensitively', function () {
+    Event::listen('event.redact', fn() => true);
+    Event::dispatch('event.redact', [[
+        'Password' => 'secret123',
+        'SECRET' => 'hidden',
+        'Api_Key' => 'abc-123',
+        'name' => 'visible',
+    ]]);
+
+    app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
+
+    $log = EventLog::first();
+    $payload = $log->payload;
+
+    // Navigate into the payload — dispatch wraps in array
+    $data = $payload[0] ?? $payload;
+
+    expect($data['Password'])->toBe('[REDACTED]');
+    expect($data['SECRET'])->toBe('[REDACTED]');
+    expect($data['Api_Key'])->toBe('[REDACTED]');
+    expect($data['name'])->toBe('visible');
+});
+
+it('handles scalar payload without TypeError', function () {
+    Event::listen('event.scalar', fn() => true);
+    Event::dispatch('event.scalar', ['just a string']);
+
+    app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
+
+    $log = EventLog::first();
+    expect($log)->not->toBeNull();
+    expect($log->event_name)->toBe('event.scalar');
+});

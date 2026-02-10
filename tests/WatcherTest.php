@@ -81,6 +81,11 @@ it('supports custom watchers via WatcherInterface', function () {
         {
             return ['custom_metric' => 42];
         }
+
+        public function reset(): void
+        {
+            $this->count = 0;
+        }
     };
 
     $manager = new WatcherManager([$custom]);

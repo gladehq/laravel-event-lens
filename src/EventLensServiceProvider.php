@@ -70,6 +70,8 @@ class EventLensServiceProvider extends ServiceProvider
             $this->app->terminating(function () {
                 $this->app->make(Services\EventLensBuffer::class)->flush();
             });
+
+            $this->registerOctaneReset();
         }
     }
 
@@ -83,6 +85,19 @@ class EventLensServiceProvider extends ServiceProvider
             }
 
             return $this->app->environment('local');
+        });
+    }
+
+    protected function registerOctaneReset(): void
+    {
+        if (! class_exists(\Laravel\Octane\Events\RequestReceived::class)) {
+            return;
+        }
+
+        $this->app['events']->listen(\Laravel\Octane\Events\RequestReceived::class, function () {
+            $this->app->make(Services\EventLensBuffer::class)->flush();
+            $this->app->make(Services\EventRecorder::class)->reset();
+            $this->app->make(WatcherManager::class)->reset();
         });
     }
 

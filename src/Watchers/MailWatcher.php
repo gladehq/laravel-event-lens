@@ -40,4 +40,9 @@ class MailWatcher implements WatcherInterface
 
         return ['mails' => $count];
     }
+
+    public function reset(): void
+    {
+        $this->stack = [];
+    }
 }
