@@ -34,6 +34,7 @@ class EventLensServiceProvider extends ServiceProvider
             return new WatcherManager($watchers);
         });
 
+        $this->app->singleton(Collectors\EventCollector::class);
         $this->app->singleton(Services\EventRecorder::class);
 
         if ($this->shouldEnable()) {

@@ -8,7 +8,7 @@ return [
     | EventLens Status
     |--------------------------------------------------------------------------
     |
-    | You may disable EventLens entirely here. tightly
+    | You may disable EventLens entirely here.
     |
     */
     'enabled' => env('EVENT_LENS_ENABLED', true),
@@ -22,7 +22,7 @@ return [
     | of events. 1.0 = 100%, 0.1 = 10%.
     |
     */
-    'sampling_rate' => env('EVENT_LENS_SAMPLING_RATE', 0.1),
+    'sampling_rate' => env('EVENT_LENS_SAMPLING_RATE', 1.0),
 
     /*
     |--------------------------------------------------------------------------
@@ -137,6 +137,16 @@ return [
     |
     */
     'prune_after_days' => 7,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Slow Threshold
+    |--------------------------------------------------------------------------
+    |
+    | Events taking longer than this (in ms) are considered "slow".
+    |
+    */
+    'slow_threshold' => 100.0,
 
     /*
     |--------------------------------------------------------------------------
