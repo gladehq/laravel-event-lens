@@ -5,8 +5,6 @@ use GladeHQ\LaravelEventLens\Services\EventLensBuffer;
 use Illuminate\Support\Facades\Config;
 
 beforeEach(function () {
-    $migration = include __DIR__.'/../database/migrations/create_event_lens_table.php';
-    $migration->up();
     EventLog::truncate();
 });
 

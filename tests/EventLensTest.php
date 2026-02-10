@@ -10,17 +10,13 @@ use function Pest\Laravel\assertDatabaseHas;
 use function Pest\Laravel\get;
 
 beforeEach(function () {
-    // Migrate the test database
-    $migration = include __DIR__.'/../database/migrations/create_event_lens_table.php';
-    $migration->up();
-    
     Config::set('event-lens.enabled', true);
-    Config::set('event-lens.sampling_rate', 1.0); // 100% for tests
+    Config::set('event-lens.sampling_rate', 1.0);
     Config::set('event-lens.namespaces', [
         'GladeHQ\LaravelEventLens\Tests\Fixtures\*',
         'event.*',
         'App\*'
-    ]); 
+    ]);
     EventLog::truncate();
 });
 

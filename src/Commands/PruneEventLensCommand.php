@@ -5,53 +5,51 @@ declare(strict_types=1);
 namespace GladeHQ\LaravelEventLens\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Console\Isolatable;
 use GladeHQ\LaravelEventLens\Models\EventLog;
-use Illuminate\Support\Facades\Config;
 
-class PruneEventLensCommand extends Command
+class PruneEventLensCommand extends Command implements Isolatable
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'event-lens:prune {--days= : The number of days to retain events}';
+    protected $signature = 'event-lens:prune
+        {--days= : The number of days to retain events}
+        {--dry-run : Show how many events would be pruned without deleting}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Prune old events from the EventLens database';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    public function handle(): int
     {
-        $days = $this->option('days') ?? config('event-lens.prune_after_days', 7);
-        
+        $days = (int) ($this->option('days') ?? config('event-lens.prune_after_days', 7));
+        $dryRun = $this->option('dry-run');
+
         $this->info("Pruning events older than {$days} days...");
 
         $cutoff = now()->subDays($days);
-        
+
+        if ($dryRun) {
+            $count = EventLog::where('happened_at', '<', $cutoff)->count();
+            $this->info("Would prune {$count} events (dry run).");
+            return self::SUCCESS;
+        }
+
         $count = 0;
-        
-        // Chunk deletion
+
         do {
-            $deleted = EventLog::where('happened_at', '<', $cutoff)
+            $ids = EventLog::where('happened_at', '<', $cutoff)
                 ->limit(1000)
-                ->delete();
-            
-            $count += $deleted;
-            
-            if ($deleted > 0) {
-                $this->output->write('.');
+                ->pluck('id');
+
+            if ($ids->isEmpty()) {
+                break;
             }
-            
-        } while ($deleted > 0);
+
+            $deleted = EventLog::whereIn('id', $ids)->delete();
+            $count += $deleted;
+            $this->output->write('.');
+        } while (true);
 
         $this->newLine();
         $this->info("Pruned {$count} events.");
+
+        return self::SUCCESS;
     }
 }

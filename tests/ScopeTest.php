@@ -4,8 +4,6 @@ use GladeHQ\LaravelEventLens\Models\EventLog;
 use Illuminate\Support\Facades\Config;
 
 beforeEach(function () {
-    $migration = include __DIR__.'/../database/migrations/create_event_lens_table.php';
-    $migration->up();
     Config::set('event-lens.enabled', true);
     EventLog::truncate();
 });
@@ -58,6 +56,16 @@ it('scopes by date range', function () {
 
     expect(EventLog::betweenDates(now()->subDay(), now()->addDay())->count())->toBe(1)
         ->and(EventLog::betweenDates(null, null)->count())->toBe(2);
+});
+
+it('scopes by minimum query count', function () {
+    EventLog::insert([
+        ['event_id' => 'low', 'correlation_id' => 'c1', 'event_name' => 'Low', 'listener_name' => 'Closure', 'side_effects' => json_encode(['queries' => 0]), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'high', 'correlation_id' => 'c2', 'event_name' => 'High', 'listener_name' => 'Closure', 'side_effects' => json_encode(['queries' => 5]), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::withMinQueries(3)->count())->toBe(1);
+    expect(EventLog::withMinQueries(3)->first()->event_name)->toBe('High');
 });
 
 it('resolves parent-child relationships', function () {

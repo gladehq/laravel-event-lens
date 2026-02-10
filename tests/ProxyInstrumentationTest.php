@@ -6,8 +6,6 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Config;
 
 beforeEach(function () {
-    $migration = include __DIR__.'/../database/migrations/create_event_lens_table.php';
-    $migration->up();
     Config::set('event-lens.enabled', true);
     Config::set('event-lens.sampling_rate', 1.0);
     Config::set('event-lens.namespaces', [

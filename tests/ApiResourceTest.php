@@ -6,8 +6,6 @@ use Illuminate\Support\Facades\Config;
 use function Pest\Laravel\get;
 
 beforeEach(function () {
-    $migration = include __DIR__.'/../database/migrations/create_event_lens_table.php';
-    $migration->up();
     Config::set('event-lens.enabled', true);
     EventLog::truncate();
 });

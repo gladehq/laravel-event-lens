@@ -22,4 +22,9 @@ class TestCase extends Orchestra
         // Allow dashboard access in tests
         config()->set('event-lens.authorization', fn () => true);
     }
+
+    protected function defineDatabaseMigrations()
+    {
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+    }
 }

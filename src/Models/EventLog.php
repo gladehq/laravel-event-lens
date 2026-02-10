@@ -7,6 +7,24 @@ namespace GladeHQ\LaravelEventLens\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $event_id
+ * @property string $correlation_id
+ * @property string|null $parent_event_id
+ * @property string $event_name
+ * @property string $listener_name
+ * @property array|null $payload
+ * @property array|null $side_effects
+ * @property array|null $model_changes
+ * @property string|null $exception
+ * @property string|null $model_type
+ * @property int|null $model_id
+ * @property float $execution_time_ms
+ * @property \Illuminate\Support\Carbon $happened_at
+ * @property \Illuminate\Support\Carbon $created_at
+ * @property \Illuminate\Support\Carbon $updated_at
+ */
 class EventLog extends Model
 {
     protected $table = 'event_lens_events';
@@ -68,6 +86,11 @@ class EventLog extends Model
 
     public function scopeWithMinQueries(Builder $query, int $min = 1): Builder
     {
-        return $query->whereRaw("json_extract(side_effects, '$.queries') >= ?", [$min]);
+        $driver = $query->getConnection()->getDriverName();
+
+        return match ($driver) {
+            'pgsql' => $query->whereRaw("(side_effects::json->>'queries')::int >= ?", [$min]),
+            default => $query->whereRaw("json_extract(side_effects, '$.queries') >= ?", [$min]),
+        };
     }
 }
