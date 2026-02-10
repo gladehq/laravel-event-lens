@@ -12,6 +12,8 @@ Route::group([
     ),
 ], function () {
     Route::get('/', [EventLensController::class, 'index'])->name('event-lens.index');
+    Route::get('/statistics', [EventLensController::class, 'statistics'])->name('event-lens.statistics');
     Route::get('/api/latest', [EventLensController::class, 'latest'])->name('event-lens.api.latest');
+    Route::get('/event/{eventId}', [EventLensController::class, 'detail'])->name('event-lens.detail');
     Route::get('/{correlationId}', [EventLensController::class, 'show'])->name('event-lens.show');
 });
