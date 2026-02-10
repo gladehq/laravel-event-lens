@@ -7,6 +7,7 @@ namespace GladeHQ\LaravelEventLens;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Contracts\Events\Dispatcher as DispatcherContract;
+use GladeHQ\LaravelEventLens\Watchers\WatcherManager;
 
 class EventLensServiceProvider extends ServiceProvider
 {
@@ -19,9 +20,20 @@ class EventLensServiceProvider extends ServiceProvider
             __DIR__.'/../config/event-lens.php', 'event-lens'
         );
 
-        // Register Buffer & Watcher as Singletons
-        $this->app->singleton(Watchers\SideEffectWatcher::class);
+        // Register Buffer & WatcherManager as Singletons
         $this->app->singleton(Services\EventLensBuffer::class);
+
+        $this->app->singleton(WatcherManager::class, function ($app) {
+            $watcherClasses = config('event-lens.watchers', [
+                Watchers\QueryWatcher::class,
+                Watchers\MailWatcher::class,
+            ]);
+
+            $watchers = array_map(fn ($class) => $app->make($class), $watcherClasses);
+
+            return new WatcherManager($watchers);
+        });
+
         $this->app->singleton(Services\EventRecorder::class);
 
         if ($this->shouldEnable()) {
@@ -53,7 +65,7 @@ class EventLensServiceProvider extends ServiceProvider
         $this->registerGate();
 
         if ($this->shouldEnable()) {
-            $this->app->make(Watchers\SideEffectWatcher::class)->boot();
+            $this->app->make(WatcherManager::class)->boot();
 
             $this->app->terminating(function () {
                 $this->app->make(Services\EventLensBuffer::class)->flush();

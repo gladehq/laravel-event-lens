@@ -36,7 +36,7 @@ return [
         'App\\Events\\*',
         // 'Illuminate\\Auth\\Events\\Login',
     ],
-
+    
     /*
     |--------------------------------------------------------------------------
     | Capture Backtrace
@@ -63,7 +63,7 @@ return [
         'secret',
         'api_key',
     ],
-
+    
     /*
     |--------------------------------------------------------------------------
     | Dashboard Authorization
@@ -100,6 +100,22 @@ return [
     |
     */
     'path' => 'event-lens',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Watchers
+    |--------------------------------------------------------------------------
+    |
+    | Define which watchers are active. Each watcher must implement
+    | GladeHQ\LaravelEventLens\Contracts\WatcherInterface.
+    |
+    | You may add custom watchers (e.g. Redis, HTTP, Cache) to this array.
+    |
+    */
+    'watchers' => [
+        \GladeHQ\LaravelEventLens\Watchers\QueryWatcher::class,
+        \GladeHQ\LaravelEventLens\Watchers\MailWatcher::class,
+    ],
 
     /*
     |--------------------------------------------------------------------------

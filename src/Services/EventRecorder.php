@@ -4,16 +4,16 @@ namespace GladeHQ\LaravelEventLens\Services;
 
 use Closure;
 use GladeHQ\LaravelEventLens\Collectors\EventCollector;
-use GladeHQ\LaravelEventLens\Watchers\SideEffectWatcher;
+use GladeHQ\LaravelEventLens\Watchers\WatcherManager;
 use Illuminate\Support\Str;
 
 class EventRecorder
 {
     protected array $callStack = [];
-    protected SideEffectWatcher $watcher;
+    protected WatcherManager $watcher;
     protected EventLensBuffer $buffer;
 
-    public function __construct(SideEffectWatcher $watcher, EventLensBuffer $buffer)
+    public function __construct(WatcherManager $watcher, EventLensBuffer $buffer)
     {
         $this->watcher = $watcher;
         $this->buffer = $buffer;
@@ -43,10 +43,10 @@ class EventRecorder
         // 3. Prepare Recording
         $eventId = (string) Str::uuid();
         $this->callStack[] = ['event_id' => $eventId, 'correlation_id' => $correlationId];
-
+        
         $this->watcher->start();
         $startTime = microtime(true);
-
+        
         // Backtrace (Opt-in)
         $backtrace = null;
         if (config('event-lens.capture_backtrace', false)) {
@@ -81,20 +81,20 @@ class EventRecorder
     {
         try {
             $collector = new EventCollector();
-
+            
             // Normalize payload for collection
             // If it's a listener wrapper, $eventPayload is passed [0=>eventArg] or just eventArg.
             $collectData = $eventPayload;
-
+            
             // Collector collectPayload($event, $payload)
             // Ideally we pass ($eventName, $eventPayload) if eventName is string?
             // Or ($eventObject, [])?
             // The existing proxy logic was a bit messy. Let's trust Collector to handle specific inputs.
             // But we need to pass strict arguments.
-
+            
             // If eventPayload is array and first item is object, use that as 'event'.
             $eventObj = is_array($eventPayload) && isset($eventPayload[0]) ? $eventPayload[0] : $eventPayload;
-
+            
             $collectedPayload = $collector->collectPayload($eventObj, $eventPayload);
 
             if ($backtrace && is_array($collectedPayload)) {
@@ -125,11 +125,11 @@ class EventRecorder
     protected function shouldRecord($name, $id): bool
     {
         if (! Str::is(config('event-lens.namespaces', []), $name)) return false;
-
+        
         $rate = config('event-lens.sampling_rate', 0.1);
         if ($rate >= 1.0) return true;
         if ($rate <= 0.0) return false;
-
+        
         return ((abs(crc32($id)) % 100) / 100) <= $rate;
     }
 }
