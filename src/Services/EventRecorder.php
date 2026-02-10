@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 class EventRecorder
 {
     protected array $callStack = [];
+    protected array $correlationContext = [];
     protected WatcherManager $watcher;
     protected EventLensBuffer $buffer;
     protected EventCollector $collector;
@@ -26,7 +27,8 @@ class EventRecorder
     public function capture(string $eventName, string $listenerName, $eventPayload, Closure $callback)
     {
         $parentContext = end($this->callStack) ?: null;
-        $correlationId = $parentContext ? $parentContext['correlation_id'] : (string) Str::uuid();
+        $contextCorrelation = end($this->correlationContext) ?: null;
+        $correlationId = $parentContext ? $parentContext['correlation_id'] : ($contextCorrelation ?? (string) Str::uuid());
         $parentEventId = $parentContext ? $parentContext['event_id'] : null;
 
         if (! $this->shouldRecord($eventName, $correlationId)) {
@@ -72,6 +74,28 @@ class EventRecorder
     public function reset(): void
     {
         $this->callStack = [];
+        $this->correlationContext = [];
+    }
+
+    public function pushCorrelationContext(string $correlationId): void
+    {
+        $this->correlationContext[] = $correlationId;
+    }
+
+    public function popCorrelationContext(): void
+    {
+        array_pop($this->correlationContext);
+    }
+
+    public function currentCorrelationId(): ?string
+    {
+        $fromStack = end($this->callStack);
+        if ($fromStack) {
+            return $fromStack['correlation_id'];
+        }
+
+        $fromContext = end($this->correlationContext);
+        return $fromContext ?: null;
     }
 
     protected function persist($eventId, $correlationId, $parentEventId, $eventName, $listenerName, $eventPayload, $sideEffects, $duration, $backtrace, $exception = null)

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GladeHQ\LaravelEventLens;
 
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Contracts\Events\Dispatcher as DispatcherContract;
 use GladeHQ\LaravelEventLens\Watchers\WatcherManager;
@@ -84,6 +85,7 @@ class EventLensServiceProvider extends ServiceProvider
             });
 
             $this->registerOctaneReset();
+            $this->registerQueueTracing();
         }
     }
 
@@ -110,6 +112,34 @@ class EventLensServiceProvider extends ServiceProvider
             $this->app->make(Services\EventLensBuffer::class)->flush();
             $this->app->make(Services\EventRecorder::class)->reset();
             $this->app->make(WatcherManager::class)->reset();
+        });
+    }
+
+    protected function registerQueueTracing(): void
+    {
+        $recorder = $this->app->make(Services\EventRecorder::class);
+
+        Queue::createPayloadUsing(function ($connectionName, $queue, array $payload) use ($recorder) {
+            $correlationId = $recorder->currentCorrelationId();
+            if ($correlationId) {
+                return ['event_lens_correlation_id' => $correlationId];
+            }
+            return [];
+        });
+
+        $this->app['events']->listen(\Illuminate\Queue\Events\JobProcessing::class, function ($event) use ($recorder) {
+            $correlationId = $event->job->payload()['event_lens_correlation_id'] ?? null;
+            if ($correlationId) {
+                $recorder->pushCorrelationContext($correlationId);
+            }
+        });
+
+        $this->app['events']->listen(\Illuminate\Queue\Events\JobProcessed::class, function () use ($recorder) {
+            $recorder->popCorrelationContext();
+        });
+
+        $this->app['events']->listen(\Illuminate\Queue\Events\JobFailed::class, function () use ($recorder) {
+            $recorder->popCorrelationContext();
         });
     }
 
