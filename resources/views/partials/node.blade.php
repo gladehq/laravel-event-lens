@@ -49,7 +49,7 @@
         </div>
 
         <div class="w-1/4 text-right">
-            <span class="font-mono text-sm {{ $node->execution_time_ms > 100 ? 'text-red-600 font-bold' : 'text-gray-600' }}">
+            <span class="font-mono text-sm {{ $node->execution_time_ms > $slowThreshold ? 'text-red-600 font-bold' : 'text-gray-600' }}">
                 {{ number_format($node->execution_time_ms, 2) }} ms
             </span>
             {{-- Duration bar relative to total --}}
@@ -65,7 +65,7 @@
 @if($hasChildren)
     <div x-show="open" x-cloak class="divide-y divide-gray-100">
         @foreach($node->children as $child)
-            @include('event-lens::partials.node', ['node' => $child, 'depth' => $depth + 1, 'totalDuration' => $totalDuration ?? 0])
+            @include('event-lens::partials.node', ['node' => $child, 'depth' => $depth + 1, 'totalDuration' => $totalDuration ?? 0, 'slowThreshold' => $slowThreshold])
         @endforeach
     </div>
 @endif

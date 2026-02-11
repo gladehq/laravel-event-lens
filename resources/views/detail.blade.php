@@ -38,7 +38,7 @@
                 @endif
                 <div class="px-5 py-3 flex justify-between">
                     <dt class="text-sm text-gray-500">Execution Time</dt>
-                    <dd class="text-sm font-semibold {{ $event->execution_time_ms > 100 ? 'text-red-600' : 'text-gray-900' }}">
+                    <dd class="text-sm font-semibold {{ $event->execution_time_ms > $slowThreshold ? 'text-red-600' : 'text-gray-900' }}">
                         {{ number_format($event->execution_time_ms, 4) }} ms
                     </dd>
                 </div>

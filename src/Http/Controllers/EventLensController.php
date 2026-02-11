@@ -47,8 +47,9 @@ class EventLensController extends Controller
         $totalQueries = $events->sum(fn ($e) => $e->side_effects['queries'] ?? 0);
         $totalMails = $events->sum(fn ($e) => $e->side_effects['mails'] ?? 0);
         $tree = $this->buildTree($events);
+        $slowThreshold = (float) config('event-lens.slow_threshold', 100.0);
 
-        return view('event-lens::waterfall', compact('tree', 'events', 'totalDuration', 'totalQueries', 'totalMails'));
+        return view('event-lens::waterfall', compact('tree', 'events', 'totalDuration', 'totalQueries', 'totalMails', 'slowThreshold'));
     }
 
     public function statistics(Request $request)
@@ -97,8 +98,9 @@ class EventLensController extends Controller
     public function detail(string $eventId)
     {
         $event = EventLog::where('event_id', $eventId)->firstOrFail();
+        $slowThreshold = (float) config('event-lens.slow_threshold', 100.0);
 
-        return view('event-lens::detail', compact('event'));
+        return view('event-lens::detail', compact('event', 'slowThreshold'));
     }
 
     public function latest(Request $request)

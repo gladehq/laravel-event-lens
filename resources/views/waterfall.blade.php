@@ -34,7 +34,7 @@
         
         <div class="divide-y divide-gray-200">
             @foreach($tree as $node)
-                @include('event-lens::partials.node', ['node' => $node, 'depth' => 0, 'totalDuration' => $totalDuration])
+                @include('event-lens::partials.node', ['node' => $node, 'depth' => 0, 'totalDuration' => $totalDuration, 'slowThreshold' => $slowThreshold])
             @endforeach
         </div>
     </div>

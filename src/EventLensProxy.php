@@ -10,7 +10,7 @@ use Closure;
 
 class EventLensProxy implements DispatcherContract
 {
-    protected $original;
+    protected DispatcherContract $original;
     protected EventRecorder $recorder;
 
     public function __construct(DispatcherContract $original)
@@ -57,7 +57,10 @@ class EventLensProxy implements DispatcherContract
         return null;
     }
 
-    public function hasListeners($eventName) { return $this->original->hasListeners($eventName); }
+    public function hasListeners($eventName)
+    {
+        return $this->original->hasListeners($eventName);
+    }
 
     public function subscribe($subscriber)
     {
@@ -100,14 +103,28 @@ class EventLensProxy implements DispatcherContract
         });
     }
 
-    public function forget($event) { return $this->original->forget($event); }
-    public function forgetPushed() { return $this->original->forgetPushed(); }
+    public function forget($event)
+    {
+        return $this->original->forget($event);
+    }
+
+    public function forgetPushed()
+    {
+        return $this->original->forgetPushed();
+    }
 
     protected function resolveListenerName($listener): string
     {
-        if (is_string($listener)) return $listener;
-        if ($listener instanceof Closure) return 'Closure';
-        if (is_array($listener)) return (is_object($listener[0]) ? get_class($listener[0]) : $listener[0]).'@'.$listener[1];
+        if (is_string($listener)) {
+            return $listener;
+        }
+        if ($listener instanceof Closure) {
+            return 'Closure';
+        }
+        if (is_array($listener)) {
+            return (is_object($listener[0]) ? get_class($listener[0]) : $listener[0]).'@'.$listener[1];
+        }
+
         return 'Unknown';
     }
 

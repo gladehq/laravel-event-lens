@@ -100,7 +100,18 @@ class EventRecorder
         return $fromContext ?: null;
     }
 
-    protected function persist($eventId, $correlationId, $parentEventId, $eventName, $listenerName, $eventPayload, $sideEffects, $duration, $backtrace, $exception = null)
+    protected function persist(
+        string $eventId,
+        string $correlationId,
+        ?string $parentEventId,
+        string $eventName,
+        string $listenerName,
+        mixed $eventPayload,
+        array $sideEffects,
+        float $duration,
+        ?string $backtrace,
+        ?string $exception = null,
+    )
     {
         try {
             $eventObj = is_array($eventPayload) && isset($eventPayload[0]) ? $eventPayload[0] : $eventPayload;
