@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GladeHQ\LaravelEventLens\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
@@ -28,6 +29,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class EventLog extends Model
 {
+    use HasFactory;
+
     protected $table = 'event_lens_events';
 
     protected $guarded = [];
@@ -42,6 +45,11 @@ class EventLog extends Model
     public function getConnectionName()
     {
         return config('event-lens.database_connection') ?? parent::getConnectionName();
+    }
+
+    protected static function newFactory(): \GladeHQ\LaravelEventLens\Database\Factories\EventLogFactory
+    {
+        return \GladeHQ\LaravelEventLens\Database\Factories\EventLogFactory::new();
     }
 
     // -- Relationships --

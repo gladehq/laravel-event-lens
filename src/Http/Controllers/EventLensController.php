@@ -22,15 +22,17 @@ class EventLensController extends Controller
             'slow' => 'nullable|boolean',
         ]);
 
+        $slowThreshold = (float) config('event-lens.slow_threshold', 100.0);
+
         $events = EventLog::roots()
             ->forEvent($request->get('event'))
             ->forCorrelation($request->get('correlation'))
             ->betweenDates($request->get('start_date'), $request->get('end_date'))
-            ->when($request->boolean('slow'), fn ($q) => $q->slow(config('event-lens.slow_threshold', 100.0)))
+            ->when($request->boolean('slow'), fn ($q) => $q->slow($slowThreshold))
             ->latest('happened_at')
             ->paginate(20);
 
-        return view('event-lens::index', compact('events'));
+        return view('event-lens::index', compact('events', 'slowThreshold'));
     }
 
     public function show(string $correlationId)

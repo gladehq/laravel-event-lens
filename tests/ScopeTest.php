@@ -111,3 +111,17 @@ it('has an index on execution_time_ms', function () {
 
     expect($found)->toBeTrue();
 });
+
+it('can create events using factory', function () {
+    EventLog::factory()->count(3)->create();
+
+    expect(EventLog::count())->toBe(3);
+});
+
+it('supports factory states', function () {
+    $event = EventLog::factory()->slow(250.0)->withSideEffects(5, 2)->create();
+
+    expect($event->execution_time_ms)->toBe(250.0);
+    expect($event->side_effects['queries'])->toBe(5);
+    expect($event->side_effects['mails'])->toBe(2);
+});

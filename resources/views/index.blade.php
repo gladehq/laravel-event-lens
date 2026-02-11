@@ -40,7 +40,7 @@
             <label class="flex items-center gap-2">
                 <input type="checkbox" name="slow" value="1" {{ request('slow') ? 'checked' : '' }}
                     class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                <span class="text-sm text-gray-700">Slow events only (&gt;100ms)</span>
+                <span class="text-sm text-gray-700">Slow events only (&gt;{{ $slowThreshold }}ms)</span>
             </label>
             <div class="flex-1"></div>
             <a href="{{ route('event-lens.index') }}" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Clear</a>

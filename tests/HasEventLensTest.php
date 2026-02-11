@@ -1,35 +1,13 @@
 <?php
 
 use GladeHQ\LaravelEventLens\Models\EventLog;
-use GladeHQ\LaravelEventLens\Concerns\HasEventLens;
-use Illuminate\Database\Eloquent\Model;
+use GladeHQ\LaravelEventLens\Tests\Fixtures\TrackableOrder;
+use GladeHQ\LaravelEventLens\Tests\Fixtures\OrderPlacedEvent;
+use GladeHQ\LaravelEventLens\Tests\Fixtures\SimpleEvent;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
-
-// Test model that uses the HasEventLens trait
-class TrackableOrder extends Model {
-    use HasEventLens;
-
-    protected $table = 'trackable_orders';
-    protected $guarded = [];
-}
-
-// Event that carries a model
-class OrderPlacedEvent {
-    public TrackableOrder $order;
-
-    public function __construct(TrackableOrder $order)
-    {
-        $this->order = $order;
-    }
-}
-
-// Event without model
-class SimpleEvent {
-    public string $message = 'hello';
-}
 
 beforeEach(function () {
     Config::set('event-lens.enabled', true);

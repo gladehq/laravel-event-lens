@@ -24,7 +24,8 @@
     },
     "autoload": {
         "psr-4": {
-            "GladeHQ\\LaravelEventLens\\": "src/"
+            "GladeHQ\\LaravelEventLens\\": "src/",
+            "GladeHQ\\LaravelEventLens\\Database\\": "database/"
         }
     },
     "autoload-dev": {
