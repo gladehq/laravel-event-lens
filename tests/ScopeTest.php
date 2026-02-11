@@ -2,6 +2,7 @@
 
 use GladeHQ\LaravelEventLens\Models\EventLog;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
     Config::set('event-lens.enabled', true);
@@ -91,4 +92,22 @@ it('resolves parent-child relationships', function () {
     expect($parent->children)->toHaveCount(1)
         ->and($parent->children->first()->event_id)->toBe('child-id')
         ->and($child->parent->event_id)->toBe('parent-id');
+});
+
+it('has an index on execution_time_ms', function () {
+    $indexes = DB::select("PRAGMA index_list('event_lens_events')");
+    $indexNames = array_map(fn ($i) => $i->name, $indexes);
+
+    $found = false;
+    foreach ($indexNames as $name) {
+        $columns = DB::select("PRAGMA index_info('{$name}')");
+        foreach ($columns as $col) {
+            if ($col->name === 'execution_time_ms') {
+                $found = true;
+                break 2;
+            }
+        }
+    }
+
+    expect($found)->toBeTrue();
 });
