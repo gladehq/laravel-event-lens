@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GladeHQ\LaravelEventLens\Services;
 
+use Illuminate\Support\Facades\Log;
 use GladeHQ\LaravelEventLens\Models\EventLog;
 
 class EventLensBuffer
@@ -61,9 +62,10 @@ class EventLensBuffer
 
             $this->events = [];
         } catch (\Throwable $e) {
-            if (config('app.debug')) {
-                report($e);
-            }
+            Log::warning('EventLens: Failed to flush event buffer', [
+                'error' => $e->getMessage(),
+                'count' => count($this->events),
+            ]);
             $this->events = [];
         }
     }

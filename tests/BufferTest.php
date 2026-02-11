@@ -2,7 +2,10 @@
 
 use GladeHQ\LaravelEventLens\Models\EventLog;
 use GladeHQ\LaravelEventLens\Services\EventLensBuffer;
+use GladeHQ\LaravelEventLens\Services\EventRecorder;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 
 beforeEach(function () {
     EventLog::truncate();
@@ -45,4 +48,51 @@ it('does not auto-flush below limit', function () {
 
     expect($buffer->count())->toBe(3);
     expect(EventLog::count())->toBe(0);
+});
+
+it('logs warning when flush fails', function () {
+    Log::spy();
+
+    // Use a buffer with data that will fail to insert (invalid table scenario)
+    $buffer = new EventLensBuffer();
+    $buffer->push([
+        'event_id' => 'e-1',
+        'correlation_id' => 'c-1',
+        'event_name' => 'Test',
+        'listener_name' => 'Closure',
+        'execution_time_ms' => 1.0,
+        'happened_at' => now()->format('Y-m-d H:i:s'),
+        'INVALID_COLUMN' => 'will cause failure',
+    ]);
+
+    $buffer->flush();
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn ($msg) => str_contains($msg, 'Failed to flush'))
+        ->once();
+});
+
+it('logs warning when persist fails in recorder', function () {
+    Log::spy();
+
+    Config::set('event-lens.enabled', true);
+    Config::set('event-lens.sampling_rate', 1.0);
+    Config::set('event-lens.namespaces', ['event.*']);
+
+    // Mock the buffer to throw on push
+    $buffer = Mockery::mock(EventLensBuffer::class);
+    $buffer->shouldReceive('push')->andThrow(new \RuntimeException('DB gone'));
+
+    // Build a fresh recorder with the mocked buffer
+    $recorder = new EventRecorder(
+        app(\GladeHQ\LaravelEventLens\Watchers\WatcherManager::class),
+        $buffer,
+        app(\GladeHQ\LaravelEventLens\Collectors\EventCollector::class),
+    );
+
+    $recorder->capture('event.test', 'Closure', [], fn () => true);
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn ($msg) => str_contains($msg, 'Failed to persist'))
+        ->once();
 });

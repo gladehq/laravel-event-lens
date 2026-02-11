@@ -7,6 +7,7 @@ namespace GladeHQ\LaravelEventLens\Services;
 use Closure;
 use GladeHQ\LaravelEventLens\Collectors\EventCollector;
 use GladeHQ\LaravelEventLens\Watchers\WatcherManager;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class EventRecorder
@@ -140,9 +141,10 @@ class EventRecorder
                 'happened_at' => now(),
             ]);
         } catch (\Throwable $e) {
-            if (config('app.debug')) {
-                report($e);
-            }
+            Log::warning('EventLens: Failed to persist event', [
+                'error' => $e->getMessage(),
+                'event' => $eventName,
+            ]);
         }
     }
 
