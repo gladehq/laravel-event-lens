@@ -4,6 +4,7 @@ use GladeHQ\LaravelEventLens\Models\EventLog;
 use Illuminate\Support\Facades\Config;
 
 use function Pest\Laravel\artisan;
+use function Pest\Laravel\get;
 
 beforeEach(function () {
     Config::set('event-lens.enabled', true);
@@ -88,4 +89,31 @@ it('prune handles zero matching events', function () {
         ->assertSuccessful();
 
     expect(EventLog::count())->toBe(0);
+});
+
+// -- Cache Invalidation --
+
+it('invalidates statistics cache when clearing data', function () {
+    $this->travelTo(now()->startOfMinute());
+
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App\Events\Test', 'listener_name' => 'Closure', 'execution_time_ms' => 50, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    // Populate cache
+    $response = get(route('event-lens.statistics'))->assertOk();
+    $response->assertViewHas('stats', fn ($stats) => $stats['total_events'] === 1);
+
+    // Clear data — should bump cache version
+    artisan('event-lens:clear', ['--force' => true])->assertSuccessful();
+
+    // Insert new data
+    EventLog::insert([
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'App\Events\New', 'listener_name' => 'Closure', 'execution_time_ms' => 75, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e3', 'correlation_id' => 'c3', 'event_name' => 'App\Events\New2', 'listener_name' => 'Closure', 'execution_time_ms' => 25, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    // Should see fresh data, not stale cache
+    $response = get(route('event-lens.statistics'))->assertOk();
+    $response->assertViewHas('stats', fn ($stats) => $stats['total_events'] === 2);
 });

@@ -62,7 +62,8 @@ class EventLensController extends Controller
         $startDate = $request->get('start_date', now()->subDays(7));
         $endDate = $request->get('end_date', now());
 
-        $cacheKey = 'event-lens:stats:' . md5(serialize([$startDate, $endDate]));
+        $version = Cache::get('event-lens:cache-version', 0);
+        $cacheKey = "event-lens:stats:v{$version}:" . md5(serialize([$startDate, $endDate]));
 
         $stats = Cache::remember($cacheKey, 120, function () use ($startDate, $endDate) {
             return [

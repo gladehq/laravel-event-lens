@@ -50,6 +50,8 @@ it('marks slow events with is_slow flag', function () {
 });
 
 it('caches statistics responses', function () {
+    $this->travelTo(now()->startOfMinute());
+
     EventLog::insert([
         ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App\Events\Test', 'listener_name' => 'Closure', 'execution_time_ms' => 50, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
     ]);
@@ -64,5 +66,7 @@ it('caches statistics responses', function () {
 
     // Second call should return cached result (still 1 event)
     $response = get(route('event-lens.statistics'))->assertOk();
-    $response->assertViewHas('stats');
+    $response->assertViewHas('stats', function ($stats) {
+        return $stats['total_events'] === 1;
+    });
 });
