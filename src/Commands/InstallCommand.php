@@ -10,7 +10,7 @@ class InstallCommand extends Command
 {
     protected $signature = 'event-lens:install';
 
-    protected $description = 'Install EventLens configuration, assets and run migrations';
+    protected $description = 'Install EventLens configuration and run migrations';
 
     public function handle(): int
     {
@@ -18,11 +18,6 @@ class InstallCommand extends Command
 
         $this->call('vendor:publish', [
             '--tag' => 'event-lens-config',
-        ]);
-
-        $this->call('vendor:publish', [
-            '--tag' => 'event-lens-assets',
-            '--force' => true,
         ]);
 
         $this->call('migrate');

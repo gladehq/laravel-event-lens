@@ -28,13 +28,12 @@ composer require gladehq/laravel-event-lens
 php artisan event-lens:install
 ```
 
-The install command publishes the config file, CSS assets and runs migrations.
+The install command publishes the config file and runs migrations.
 
 ### Manual installation
 
 ```bash
 php artisan vendor:publish --tag=event-lens-config
-php artisan vendor:publish --tag=event-lens-assets
 php artisan migrate
 ```
 
@@ -139,7 +138,7 @@ Register in config:
 
 | Command | Description |
 |---------|-------------|
-| `event-lens:install` | Publish config, assets and run migrations |
+| `event-lens:install` | Publish config and run migrations |
 | `event-lens:status` | Show current status and statistics |
 | `event-lens:clear --force` | Truncate all event data |
 | `event-lens:prune --days=7` | Delete events older than N days |
