@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GladeHQ\LaravelEventLens;
 
 use Illuminate\Contracts\Events\Dispatcher as DispatcherContract;
+use Illuminate\Support\Str;
 use GladeHQ\LaravelEventLens\Services\EventRecorder;
 use Closure;
 
@@ -13,14 +14,18 @@ class EventLensProxy implements DispatcherContract
     protected DispatcherContract $original;
     protected EventRecorder $recorder;
 
-    public function __construct(DispatcherContract $original)
+    public function __construct(DispatcherContract $original, EventRecorder $recorder)
     {
         $this->original = $original;
-        $this->recorder = app(EventRecorder::class);
+        $this->recorder = $recorder;
     }
 
     public function listen($events, $listener = null)
     {
+        if (! $this->shouldWrap($events)) {
+            return $this->original->listen($events, $listener);
+        }
+
         $wrappedListener = $this->wrapListener($events, $listener);
         return $this->original->listen($events, $wrappedListener);
     }
@@ -77,6 +82,10 @@ class EventLensProxy implements DispatcherContract
     {
         $eventName = $this->resolveEventName($event);
 
+        if (! $this->shouldWrap($eventName)) {
+            return $this->original->dispatch($event, $payload, $halt);
+        }
+
         $contextPayload = is_object($event) ? $event : $payload;
 
         return $this->recorder->capture($eventName, self::ROOT_DISPATCH, $contextPayload, function () use ($event, $payload, $halt) {
@@ -98,6 +107,10 @@ class EventLensProxy implements DispatcherContract
     {
         $eventName = $this->resolveEventName($event);
 
+        if (! $this->shouldWrap($eventName)) {
+            return $this->original->flush($event);
+        }
+
         return $this->recorder->capture($eventName, 'Event::flush', $event, function () use ($event) {
             return $this->original->flush($event);
         });
@@ -111,6 +124,29 @@ class EventLensProxy implements DispatcherContract
     public function forgetPushed()
     {
         return $this->original->forgetPushed();
+    }
+
+    protected function shouldWrap($events): bool
+    {
+        $namespaces = config('event-lens.namespaces', []);
+
+        if (empty($namespaces)) {
+            return false;
+        }
+
+        foreach ((array) $events as $event) {
+            $eventName = $this->resolveEventName($event);
+
+            if ($eventName === '*') {
+                return true;
+            }
+
+            if (Str::is($namespaces, $eventName)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function resolveListenerName($listener): string

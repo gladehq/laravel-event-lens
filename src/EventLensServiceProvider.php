@@ -12,6 +12,8 @@ use GladeHQ\LaravelEventLens\Watchers\WatcherManager;
 
 class EventLensServiceProvider extends ServiceProvider
 {
+    protected ?bool $enabled = null;
+
     /**
      * Register any application services.
      */
@@ -38,9 +40,9 @@ class EventLensServiceProvider extends ServiceProvider
         $this->app->singleton(Collectors\EventCollector::class);
         $this->app->singleton(Services\EventRecorder::class);
 
-        if ($this->shouldEnable()) {
+        if ($this->isEnabled()) {
             $this->app->extend('events', function ($dispatcher, $app) {
-                return new EventLensProxy($dispatcher);
+                return new EventLensProxy($dispatcher, $app->make(Services\EventRecorder::class));
             });
         }
     }
@@ -73,7 +75,7 @@ class EventLensServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->registerGate();
 
-        if ($this->shouldEnable()) {
+        if ($this->isEnabled()) {
             $this->app->make(WatcherManager::class)->boot();
 
             $this->app->terminating(function () {
@@ -139,8 +141,8 @@ class EventLensServiceProvider extends ServiceProvider
         });
     }
 
-    protected function shouldEnable(): bool
+    protected function isEnabled(): bool
     {
-        return config('event-lens.enabled', true);
+        return $this->enabled ??= (bool) config('event-lens.enabled', true);
     }
 }
