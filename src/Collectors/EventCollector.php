@@ -9,6 +9,8 @@ use Illuminate\Support\Collection;
 
 class EventCollector
 {
+    protected ?array $redactedKeys = null;
+
     public function collectPayload($event, $payload): array
     {
         $data = is_object($event) ? $event : $payload;
@@ -102,12 +104,17 @@ class EventCollector
 
     protected function redact(array $data, int $depth = 0): array
     {
-        if ($depth > 5) return $data;
+        if ($depth > 5) {
+            return $data;
+        }
 
-        $redactedKeys = config('event-lens.redacted_keys', ['password', 'token']);
+        $redactedKeys = $this->redactedKeys ??= array_map(
+            'strtolower',
+            config('event-lens.redacted_keys', ['password', 'token'])
+        );
 
         foreach ($data as $key => $value) {
-            if (in_array(strtolower((string) $key), array_map('strtolower', $redactedKeys))) {
+            if (in_array(strtolower((string) $key), $redactedKeys, true)) {
                 $data[$key] = '[REDACTED]';
             } elseif (is_array($value)) {
                 $data[$key] = $this->redact($value, $depth + 1);

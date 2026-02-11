@@ -16,6 +16,8 @@ class EventRecorder
     protected WatcherManager $watcher;
     protected EventLensBuffer $buffer;
     protected EventCollector $collector;
+    protected ?float $samplingRate = null;
+    protected ?bool $captureBacktrace = null;
 
     public function __construct(WatcherManager $watcher, EventLensBuffer $buffer, EventCollector $collector)
     {
@@ -42,7 +44,7 @@ class EventRecorder
         $startTime = microtime(true);
 
         $backtrace = null;
-        if (config('event-lens.capture_backtrace', false)) {
+        if ($this->captureBacktrace ??= (bool) config('event-lens.capture_backtrace', false)) {
             $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
             foreach ($trace as $frame) {
                 if (isset($frame['class']) && str_starts_with($frame['class'], 'GladeHQ\LaravelEventLens')) {
@@ -135,11 +137,17 @@ class EventRecorder
 
     protected function shouldRecord($name, $id): bool
     {
-        if (! Str::is(config('event-lens.namespaces', []), $name)) return false;
+        if (! Str::is(config('event-lens.namespaces', []), $name)) {
+            return false;
+        }
 
-        $rate = (float) config('event-lens.sampling_rate', 1.0);
-        if ($rate >= 1.0) return true;
-        if ($rate <= 0.0) return false;
+        $rate = $this->samplingRate ??= (float) config('event-lens.sampling_rate', 1.0);
+        if ($rate >= 1.0) {
+            return true;
+        }
+        if ($rate <= 0.0) {
+            return false;
+        }
 
         return ((abs(crc32($id)) % 100) / 100) < $rate;
     }
