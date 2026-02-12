@@ -60,12 +60,12 @@
             @endif
         </div>
     </div>
-</div>
 
-@if($hasChildren)
-    <div x-show="open" x-cloak class="divide-y divide-gray-100">
-        @foreach($node->children as $child)
-            @include('event-lens::partials.node', ['node' => $child, 'depth' => $depth + 1, 'totalDuration' => $totalDuration ?? 0, 'slowThreshold' => $slowThreshold])
-        @endforeach
-    </div>
-@endif
+    @if($hasChildren)
+        <div x-show="open" x-cloak class="divide-y divide-gray-100">
+            @foreach($node->children as $child)
+                @include('event-lens::partials.node', ['node' => $child, 'depth' => $depth + 1, 'totalDuration' => $totalDuration ?? 0, 'slowThreshold' => $slowThreshold])
+            @endforeach
+        </div>
+    @endif
+</div>
