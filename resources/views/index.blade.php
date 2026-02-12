@@ -25,10 +25,34 @@
                 <input type="text" name="correlation" value="{{ request('correlation') }}" placeholder="uuid..."
                     class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
             </div>
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1">Payload Contains</label>
+            <div x-data="{ showHelp: false }">
+                <label class="block text-xs font-semibold text-gray-700 mb-1">
+                    Payload Contains
+                    <button type="button" @click.prevent="showHelp = true" class="inline-flex items-center justify-center w-4 h-4 ml-0.5 rounded-full bg-gray-200 text-gray-500 hover:bg-gray-300 hover:text-gray-700 text-[10px] font-bold leading-none align-middle">?</button>
+                </label>
                 <input type="text" name="payload" value="{{ request('payload') }}" placeholder="search payload..."
                     class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                <div x-show="showHelp" x-cloak class="fixed inset-0 z-50 flex items-center justify-center">
+                    <div class="absolute inset-0 bg-black/30" @click="showHelp = false"></div>
+                    <div class="relative bg-white rounded-lg shadow-lg border border-gray-200 p-5 max-w-sm w-full mx-4" @click.stop>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-semibold text-gray-900">Payload Contains</h3>
+                            <button type="button" @click="showHelp = false" class="text-gray-400 hover:text-gray-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div class="text-xs text-gray-600 space-y-2">
+                            <p>Searches for the term anywhere inside the stored JSON payload using a substring match.</p>
+                            <p class="font-medium text-gray-700">Examples:</p>
+                            <ul class="list-disc pl-4 space-y-1">
+                                <li><code class="bg-gray-100 px-1 rounded">Alice</code> matches <code class="bg-gray-100 px-1 rounded">{"customer": "Alice"}</code></li>
+                                <li><code class="bg-gray-100 px-1 rounded">order_id</code> matches any payload containing that key</li>
+                                <li><code class="bg-gray-100 px-1 rounded">42</code> matches any payload containing that number</li>
+                            </ul>
+                            <p class="text-gray-400">Note: this is a text search, not a key-specific query. A search for "42" will also match "421" or "X42Y".</p>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div>
                 <label class="block text-xs font-semibold text-gray-700 mb-1">Start Date</label>
@@ -47,6 +71,10 @@
                     class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                 <span class="text-sm text-gray-700">Slow events only (&gt;{{ $slowThreshold }}ms)</span>
             </label>
+            <div class="w-48">
+                <input type="text" name="tag" value="{{ request('tag') }}" placeholder="Tag contains..."
+                    class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
             <div class="flex-1"></div>
             <a href="{{ route('event-lens.index') }}" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Clear</a>
             <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700">
@@ -68,7 +96,36 @@
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-medium text-indigo-600 truncate" x-text="event.event_name"></p>
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-sm font-medium text-indigo-600 truncate" x-text="event.event_name"></p>
+                                        <template x-if="event.tags && Object.keys(event.tags).length > 0">
+                                            <span x-data="{ showTags: false }" class="relative inline-flex">
+                                                <button type="button" @click.prevent.stop="showTags = true"
+                                                    class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 cursor-pointer">
+                                                    Tags
+                                                </button>
+                                                <div x-show="showTags" x-cloak class="fixed inset-0 z-50 flex items-center justify-center">
+                                                    <div class="absolute inset-0 bg-black/30" @click="showTags = false"></div>
+                                                    <div class="relative bg-white rounded-lg shadow-lg border border-gray-200 p-5 max-w-sm w-full mx-4" @click.stop>
+                                                        <div class="flex items-center justify-between mb-3">
+                                                            <h3 class="text-sm font-semibold text-gray-900">Tags</h3>
+                                                            <button type="button" @click="showTags = false" class="text-gray-400 hover:text-gray-600">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                            </button>
+                                                        </div>
+                                                        <dl class="space-y-2">
+                                                            <template x-for="(val, key) in event.tags" :key="key">
+                                                                <div class="flex items-center justify-between">
+                                                                    <dt class="text-xs font-medium text-gray-500" x-text="key"></dt>
+                                                                    <dd class="text-xs font-mono text-gray-900" x-text="val ?? 'null'"></dd>
+                                                                </div>
+                                                            </template>
+                                                        </dl>
+                                                    </div>
+                                                </div>
+                                            </span>
+                                        </template>
+                                    </div>
                                     <p class="text-xs text-gray-500">
                                         <span x-text="event.happened_at"></span> &middot; <span x-text="event.correlation_id"></span>
                                     </p>
@@ -102,7 +159,10 @@
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-medium text-indigo-600 truncate">{{ $event->event_name }}</p>
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-sm font-medium text-indigo-600 truncate">{{ $event->event_name }}</p>
+                                        @include('event-lens::partials.tags-badge', ['tags' => $event->tags])
+                                    </div>
                                     <p class="text-xs text-gray-500">{{ $event->happened_at->diffForHumans() }} &middot; {{ $event->correlation_id }}</p>
                                     @include('event-lens::partials.payload-summary', ['payload' => $event->payload_summary])
                                 </div>

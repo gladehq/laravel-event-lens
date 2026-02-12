@@ -69,6 +69,25 @@
         </div>
     </div>
 
+    {{-- Tags --}}
+    @if(!empty($event->tags))
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+            <div class="px-5 py-4 border-b border-gray-200">
+                <h2 class="text-sm font-semibold text-gray-700">Tags</h2>
+            </div>
+            <div class="p-5">
+                <dl class="divide-y divide-gray-100">
+                    @foreach($event->tags as $key => $value)
+                        <div class="px-2 py-3 flex items-center justify-between">
+                            <dt class="text-sm font-medium text-gray-500">{{ e($key) }}</dt>
+                            <dd class="text-sm font-mono text-gray-900">{{ e($value ?? 'null') }}</dd>
+                        </div>
+                    @endforeach
+                </dl>
+            </div>
+        </div>
+    @endif
+
     {{-- Exception --}}
     @if($event->exception)
         <div class="bg-red-50 border border-red-200 rounded-lg shadow-sm overflow-hidden mb-6">

@@ -31,6 +31,7 @@
                     @if($node->exception)
                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700" title="{{ e($node->exception) }}">ERR</span>
                     @endif
+                    @include('event-lens::partials.tags-badge', ['tags' => $node->tags])
                 </div>
                 @include('event-lens::partials.payload-summary', ['payload' => $node->payload_summary])
             </div>
