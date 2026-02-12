@@ -15,7 +15,7 @@ Deep observability for Laravel Events and Listeners with execution tracing, wate
 - **Cross-queue tracing** - Correlation ID propagation through queued jobs
 - **Octane safe** - Automatic state reset between requests
 - **Sampling** - Configurable rate to minimize production overhead
-- **Statistics dashboard** - Error breakdown, query load ranking, listener-level drill-down, daily timeline with error overlay, and quick date presets
+- **Statistics dashboard** - Tabbed interface (Overview, Performance, Errors) with execution time histogram, event mix composition bar, error breakdown, query load ranking, listener-level drill-down, and daily timeline with error overlay
 
 ## Requirements
 
@@ -63,7 +63,7 @@ All options live in `config/event-lens.php`:
 Visit `/event-lens` (or your configured path) to access:
 
 - **Stream** - Live event feed with filtering by event name, listener name, payload content, tag content, date range, slow-only and errors-only toggles. Each row shows inline badges for errors, query counts, mail counts and tags.
-- **Statistics** - Summary cards (total events, avg execution time, slow count, error rate, total queries, total mails), daily volume bar chart with error overlay, top events by frequency with expandable per-listener breakdown, slowest individual events, heaviest events by query load, and error breakdown grouped by exception type. Quick date presets (Today, 7d, 30d) and clickable event names for drill-down to the stream.
+- **Statistics** - Tabbed dashboard organized into three views. Always-visible summary cards (total events, avg execution time, slow count, error rate, total queries, total mails) with quick date presets (Today, 7d, 30d). **Overview tab**: daily volume bar chart with error rate dots overlay, execution time distribution histogram (color-coded latency buckets), and event mix composition bar. **Performance tab**: top events by frequency with inline proportional bars and expandable per-listener breakdown, slowest individual events, and heaviest events by query load with inline bars. **Errors tab**: error breakdown grouped by exception type with count badge. All event names link to the stream page for drill-down. Tabs are bookmarkable via URL hash.
 - **Waterfall** - Per-correlation execution tree with timing bars, query/mail counts and error badges per node
 - **Detail** - Individual event inspection with payload (copy to clipboard), correlation ID (copy to clipboard), tags, side effects and exception data
 
@@ -195,6 +195,8 @@ Views will be published to `resources/views/vendor/event-lens/`.
 | Error breakdown by exception type | No | Yes |
 | Query load ranking per event | No | Yes |
 | Per-listener performance breakdown | No | Yes (expandable in statistics) |
+| Execution time distribution | No | Yes (color-coded histogram) |
+| Event mix composition | No | Yes (stacked bar visualization) |
 | Footprint | Heavy | Lightweight |
 
 ## License
