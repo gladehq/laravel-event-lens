@@ -2,6 +2,7 @@
 
 use GladeHQ\LaravelEventLens\Models\EventLog;
 use GladeHQ\LaravelEventLens\Tests\Fixtures\TestEvent;
+use GladeHQ\LaravelEventLens\Tests\Fixtures\TestListener;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Config;
 
@@ -52,6 +53,30 @@ it('subscriber listeners are wrapped and recorded', function () {
 
     $logs = EventLog::all();
     expect($logs->where('event_name', 'event.subscribed')->count())->toBeGreaterThanOrEqual(1);
+});
+
+it('invokes string class name listeners from Laravel 12 style registration', function () {
+    TestListener::$handled = false;
+
+    Event::listen('App\Events\OrderPlaced', TestListener::class);
+    Event::dispatch('App\Events\OrderPlaced', ['order_id' => 42]);
+
+    app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
+
+    expect(TestListener::$handled)->toBeTrue();
+    expect(EventLog::where('event_name', 'App\Events\OrderPlaced')->count())->toBeGreaterThanOrEqual(1);
+});
+
+it('invokes string class@method listeners', function () {
+    TestListener::$handled = false;
+
+    Event::listen('App\Events\OrderShipped', TestListener::class.'@handle');
+    Event::dispatch('App\Events\OrderShipped', ['order_id' => 7]);
+
+    app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
+
+    expect(TestListener::$handled)->toBeTrue();
+    expect(EventLog::where('event_name', 'App\Events\OrderShipped')->count())->toBeGreaterThanOrEqual(1);
 });
 
 it('skips wrapping listeners for non-monitored events', function () {

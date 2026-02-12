@@ -55,7 +55,21 @@ class EventLensProxy implements DispatcherContract
             return $listener(...$payload);
         }
 
-        if (is_string($listener) || is_array($listener)) {
+        if (is_array($listener)) {
+            return app()->call($listener, $payload);
+        }
+
+        if (is_string($listener)) {
+            // Laravel 12 registers listeners as plain class name strings
+            // (e.g. "App\Listeners\OrderListener"). Str::parseCallback
+            // splits on '@' and defaults the method to 'handle' — matching
+            // exactly what Laravel's own Dispatcher does internally.
+            if (class_exists($listener) || str_contains($listener, '@')) {
+                [$class, $method] = Str::parseCallback($listener, 'handle');
+
+                return app()->call([app($class), $method], $payload);
+            }
+
             return app()->call($listener, $payload);
         }
 
