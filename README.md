@@ -11,6 +11,7 @@ Deep observability for Laravel Events and Listeners with execution tracing, wate
 - **Model change tracking** - Automatic dirty-state capture for Eloquent models in event payloads
 - **Polymorphic model linking** - Associate events with models via `HasEventLens` trait
 - **Exception capture** - Record exceptions thrown during listener execution
+- **Event tagging** - Opt-in structured metadata via `Taggable` interface with dashboard filtering
 - **Cross-queue tracing** - Correlation ID propagation through queued jobs
 - **Octane safe** - Automatic state reset between requests
 - **Sampling** - Configurable rate to minimize production overhead
@@ -61,10 +62,10 @@ All options live in `config/event-lens.php`:
 
 Visit `/event-lens` (or your configured path) to access:
 
-- **Stream** - Live event feed with search, date filtering and slow-only toggle
+- **Stream** - Live event feed with search, date filtering, tag filtering and slow-only toggle
 - **Statistics** - Aggregate metrics, slowest events and daily volume
 - **Waterfall** - Per-correlation execution tree with timing visualization
-- **Detail** - Individual event inspection with payload, side effects and exception data
+- **Detail** - Individual event inspection with payload, tags, side effects and exception data
 
 ### Authorization
 
@@ -101,6 +102,32 @@ $order->eventLogs()->latest()->get();
 ```
 
 Events automatically detect models in their public properties and store `model_type`/`model_id` for polymorphic lookups.
+
+## Event Tagging
+
+Tag events with structured metadata by implementing the `Taggable` interface:
+
+```php
+use GladeHQ\LaravelEventLens\Contracts\Taggable;
+
+class OrderPlaced implements Taggable
+{
+    public function __construct(
+        public Order $order,
+        public string $channel,
+    ) {}
+
+    public function eventLensTags(): array
+    {
+        return [
+            'channel' => $this->channel,
+            'priority' => $this->order->total > 1000 ? 'high' : 'normal',
+        ];
+    }
+}
+```
+
+Tags are stored in a dedicated JSON column and displayed as purple badges on the dashboard. Use the "Tag Contains" filter on the stream page to search events by tag content.
 
 ## Custom Watchers
 
@@ -164,6 +191,7 @@ Views will be published to `resources/views/vendor/event-lens/`.
 | Polymorphic model linking | No | Yes |
 | Cross-queue correlation | No | Yes |
 | Custom watchers | No | Yes (pluggable interface) |
+| Event tagging | No | Yes (opt-in Taggable interface) |
 | Footprint | Heavy | Lightweight |
 
 ## License
