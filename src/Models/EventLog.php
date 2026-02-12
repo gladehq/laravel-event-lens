@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GladeHQ\LaravelEventLens\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -129,8 +130,8 @@ class EventLog extends Model
     public function scopeBetweenDates(Builder $query, $startDate = null, $endDate = null): Builder
     {
         return $query
-            ->when($startDate, fn ($q) => $q->where('happened_at', '>=', $startDate))
-            ->when($endDate, fn ($q) => $q->where('happened_at', '<=', $endDate));
+            ->when($startDate, fn ($q) => $q->where('happened_at', '>=', Carbon::parse($startDate)->startOfDay()))
+            ->when($endDate, fn ($q) => $q->where('happened_at', '<=', Carbon::parse($endDate)->endOfDay()));
     }
 
     public function scopeForPayload(Builder $query, ?string $term): Builder
