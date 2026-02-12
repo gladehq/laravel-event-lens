@@ -56,7 +56,10 @@ class EventLensProxy implements DispatcherContract
         }
 
         if (is_array($listener)) {
-            return app()->call($listener, $payload);
+            [$target, $method] = $listener;
+            $instance = is_string($target) ? app($target) : $target;
+
+            return $instance->{$method}(...array_values($payload));
         }
 
         if (is_string($listener)) {
@@ -64,10 +67,16 @@ class EventLensProxy implements DispatcherContract
             // (e.g. "App\Listeners\OrderListener"). Str::parseCallback
             // splits on '@' and defaults the method to 'handle' — matching
             // exactly what Laravel's own Dispatcher does internally.
+            //
+            // We invoke the method directly (not via app()->call()) because
+            // BoundMethod cannot match numeric-keyed payload arrays to typed
+            // method parameters, causing it to resolve the event class from
+            // the container — which fails for events with required constructor
+            // parameters.
             if (class_exists($listener) || str_contains($listener, '@')) {
                 [$class, $method] = Str::parseCallback($listener, 'handle');
 
-                return app()->call([app($class), $method], $payload);
+                return app($class)->{$method}(...array_values($payload));
             }
 
             return app()->call($listener, $payload);

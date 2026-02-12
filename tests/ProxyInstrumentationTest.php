@@ -1,8 +1,10 @@
 <?php
 
 use GladeHQ\LaravelEventLens\Models\EventLog;
+use GladeHQ\LaravelEventLens\Tests\Fixtures\ConstructorParamEvent;
 use GladeHQ\LaravelEventLens\Tests\Fixtures\TestEvent;
 use GladeHQ\LaravelEventLens\Tests\Fixtures\TestListener;
+use GladeHQ\LaravelEventLens\Tests\Fixtures\TypedListener;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Config;
 
@@ -77,6 +79,37 @@ it('invokes string class@method listeners', function () {
 
     expect(TestListener::$handled)->toBeTrue();
     expect(EventLog::where('event_name', 'App\Events\OrderShipped')->count())->toBeGreaterThanOrEqual(1);
+});
+
+it('invokes typed listener for event with required constructor params', function () {
+    TypedListener::reset();
+
+    Event::listen(ConstructorParamEvent::class, TypedListener::class);
+    event(new ConstructorParamEvent('deploy', 3));
+
+    app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
+
+    expect(TypedListener::$handled)->toBeTrue();
+    expect(TypedListener::$receivedEvent)->toBeInstanceOf(ConstructorParamEvent::class);
+    expect(TypedListener::$receivedEvent->name)->toBe('deploy');
+    expect(TypedListener::$receivedEvent->priority)->toBe(3);
+    expect(EventLog::where('event_name', ConstructorParamEvent::class)->count())->toBeGreaterThanOrEqual(1);
+});
+
+it('invokes typed closure listener for event with required constructor params', function () {
+    $received = null;
+
+    Event::listen(ConstructorParamEvent::class, function (ConstructorParamEvent $event) use (&$received) {
+        $received = $event;
+    });
+
+    event(new ConstructorParamEvent('build', 5));
+
+    app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
+
+    expect($received)->toBeInstanceOf(ConstructorParamEvent::class);
+    expect($received->name)->toBe('build');
+    expect($received->priority)->toBe(5);
 });
 
 it('skips wrapping listeners for non-monitored events', function () {
