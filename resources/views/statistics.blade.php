@@ -71,11 +71,14 @@
         </div>
     </div>
 
-    {{-- Daily Timeline (CSS bar chart with error overlay) --}}
+    {{-- Daily Timeline (CSS bar chart with error rate dots) --}}
     @if($stats['timeline']->isNotEmpty())
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-8">
             <h2 class="text-sm font-semibold text-gray-700 mb-4">Daily Event Volume</h2>
-            @php $maxCount = $stats['timeline']->max('count') ?: 1; @endphp
+            @php
+                $maxCount = $stats['timeline']->max('count') ?: 1;
+                $maxErrorRate = $stats['timeline']->max(fn($d) => $d->count > 0 ? ($d->error_count / $d->count) * 100 : 0) ?: 1;
+            @endphp
             <div class="flex items-end gap-1" style="height: 120px;">
                 @foreach($stats['timeline'] as $day)
                     @php
@@ -89,8 +92,13 @@
                             @endif
                             <div class="w-full bg-indigo-500 flex-1 transition-all group-hover:bg-indigo-600"></div>
                         </div>
+                        @if($day->error_count > 0)
+                            @php $errorRate = ($day->error_count / $day->count) * 100; @endphp
+                            <div class="absolute w-2 h-2 bg-red-600 rounded-full border border-white shadow-sm z-10 group-hover:scale-125 transition-transform"
+                                 style="bottom: {{ ($errorRate / $maxErrorRate) * 100 }}%;"></div>
+                        @endif
                         <div class="absolute -top-6 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-                            {{ $day->date }}: {{ $day->count }} events{{ $day->error_count > 0 ? ", {$day->error_count} errors" : '' }}
+                            {{ $day->date }}: {{ $day->count }} events{{ $day->error_count > 0 ? ", {$day->error_count} errors (" . number_format(($day->error_count / $day->count) * 100, 1) . "%)" : '' }}
                         </div>
                     </div>
                 @endforeach
@@ -102,6 +110,47 @@
         </div>
     @endif
 
+    {{-- Execution Time Distribution Histogram --}}
+    @php
+        $dist = $stats['execution_distribution'];
+        $buckets = [
+            ['label' => '0-10ms',   'count' => (int) $dist->bucket_0_10,   'color' => 'bg-emerald-500'],
+            ['label' => '10-50ms',  'count' => (int) $dist->bucket_10_50,  'color' => 'bg-green-500'],
+            ['label' => '50-100ms', 'count' => (int) $dist->bucket_50_100, 'color' => 'bg-yellow-500'],
+            ['label' => '100-500ms','count' => (int) $dist->bucket_100_500,'color' => 'bg-orange-500'],
+            ['label' => '500ms+',   'count' => (int) $dist->bucket_500_plus,'color' => 'bg-red-500'],
+        ];
+        $maxBucket = max(array_column($buckets, 'count')) ?: 1;
+        $totalBucket = array_sum(array_column($buckets, 'count'));
+    @endphp
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-8">
+        <h2 class="text-sm font-semibold text-gray-700">Execution Time Distribution</h2>
+        <p class="text-xs text-gray-400 mb-4">Event count per latency bucket</p>
+        @if($totalBucket > 0)
+            <div class="flex items-end gap-3" style="height: 120px;">
+                @foreach($buckets as $bucket)
+                    @php $pct = max(4, ($bucket['count'] / $maxBucket) * 100); @endphp
+                    <div class="flex-1 flex flex-col items-center justify-end h-full group relative">
+                        <div class="w-full rounded-t {{ $bucket['color'] }} transition-all group-hover:opacity-80"
+                             style="height: {{ $pct }}%;"></div>
+                        <div class="absolute -top-6 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                            {{ number_format($bucket['count']) }} events ({{ $totalBucket > 0 ? number_format(($bucket['count'] / $totalBucket) * 100, 1) : 0 }}%)
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            <div class="flex gap-3 mt-2">
+                @foreach($buckets as $bucket)
+                    <div class="flex-1 text-center text-xs text-gray-500">{{ $bucket['label'] }}</div>
+                @endforeach
+            </div>
+        @else
+            <div class="flex items-center justify-center text-gray-400 text-sm" style="height: 120px;">
+                No events recorded in this period.
+            </div>
+        @endif
+    </div>
+
     {{-- Two-column grid: Top Events & Slowest Events --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {{-- Top Events by Frequency (with expandable listener breakdown) --}}
@@ -109,6 +158,7 @@
             <div class="px-5 py-4 border-b border-gray-200">
                 <h2 class="text-sm font-semibold text-gray-700">Top Events by Frequency</h2>
             </div>
+            @php $maxEventCount = $stats['events_by_type']->max('count') ?: 1; @endphp
             <table class="w-full">
                 <thead>
                     <tr class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -135,7 +185,12 @@
                                     </a>
                                 </span>
                             </td>
-                            <td class="px-5 py-3 text-sm text-gray-900 text-right">{{ number_format($row->count) }}</td>
+                            <td class="px-5 py-3 text-sm text-gray-900 text-right relative">
+                                <div class="absolute inset-0 flex items-center pointer-events-none">
+                                    <div class="ml-auto h-full bg-indigo-50 rounded-sm" style="width: {{ ($row->count / $maxEventCount) * 100 }}%;"></div>
+                                </div>
+                                <span class="relative z-10">{{ number_format($row->count) }}</span>
+                            </td>
                             <td class="px-5 py-3 text-sm text-gray-600 text-right">{{ number_format($row->avg_time, 2) }} ms</td>
                         </tr>
                         @if($hasMultipleListeners)
@@ -198,12 +253,63 @@
         </div>
     </div>
 
+    {{-- Event Mix Composition Bar --}}
+    @if($stats['events_by_type']->isNotEmpty())
+        @php
+            $topEvents = $stats['events_by_type']->take(5);
+            $topCount = $topEvents->sum('count');
+            $otherCount = $stats['total_events'] - $topCount;
+            $mixColors = ['bg-indigo-500', 'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-cyan-500'];
+        @endphp
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
+            <h2 class="text-sm font-semibold text-gray-700">Event Mix</h2>
+            <p class="text-xs text-gray-400 mb-4">Top event types by volume</p>
+            <div class="h-3 rounded-full overflow-hidden flex">
+                @foreach($topEvents as $i => $evt)
+                    @php $evtPct = $stats['total_events'] > 0 ? ($evt->count / $stats['total_events']) * 100 : 0; @endphp
+                    <div class="group relative {{ $mixColors[$i] }}" style="width: {{ $evtPct }}%;">
+                        <div class="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                            {{ $evt->event_name }}: {{ number_format($evt->count) }} ({{ number_format($evtPct, 1) }}%)
+                        </div>
+                    </div>
+                @endforeach
+                @if($otherCount > 0)
+                    @php $otherPct = ($otherCount / $stats['total_events']) * 100; @endphp
+                    <div class="group relative bg-gray-300" style="width: {{ $otherPct }}%;">
+                        <div class="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                            Other: {{ number_format($otherCount) }} ({{ number_format($otherPct, 1) }}%)
+                        </div>
+                    </div>
+                @endif
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 mt-4">
+                @foreach($topEvents as $i => $evt)
+                    @php $evtPct = $stats['total_events'] > 0 ? ($evt->count / $stats['total_events']) * 100 : 0; @endphp
+                    <div class="flex items-center gap-2 text-xs text-gray-700 min-w-0">
+                        <div class="w-3 h-3 rounded-sm {{ $mixColors[$i] }} shrink-0"></div>
+                        <span class="truncate">{{ $evt->event_name }}</span>
+                        <span class="text-gray-400 shrink-0">{{ number_format($evtPct, 1) }}%</span>
+                    </div>
+                @endforeach
+                @if($otherCount > 0)
+                    @php $otherPct = ($otherCount / $stats['total_events']) * 100; @endphp
+                    <div class="flex items-center gap-2 text-xs text-gray-700 min-w-0">
+                        <div class="w-3 h-3 rounded-sm bg-gray-300 shrink-0"></div>
+                        <span class="truncate">Other</span>
+                        <span class="text-gray-400 shrink-0">{{ number_format($otherPct, 1) }}%</span>
+                    </div>
+                @endif
+            </div>
+        </div>
+    @endif
+
     {{-- Heaviest Events (by Query Load) --}}
     @if($stats['heaviest_events']->isNotEmpty())
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
             <div class="px-5 py-4 border-b border-gray-200">
                 <h2 class="text-sm font-semibold text-gray-700">Heaviest Events by Query Load</h2>
             </div>
+            @php $maxQueryCount = $stats['heaviest_events']->max('total_queries') ?: 1; @endphp
             <table class="w-full">
                 <thead>
                     <tr class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -223,7 +329,12 @@
                             </td>
                             <td class="px-5 py-3 text-sm text-gray-900 text-right">{{ number_format($heavy->count) }}</td>
                             <td class="px-5 py-3 text-sm text-gray-600 text-right">{{ number_format($heavy->avg_queries, 1) }}</td>
-                            <td class="px-5 py-3 text-sm font-semibold text-gray-900 text-right">{{ number_format($heavy->total_queries) }}</td>
+                            <td class="px-5 py-3 text-sm font-semibold text-gray-900 text-right relative">
+                                <div class="absolute inset-0 flex items-center pointer-events-none">
+                                    <div class="ml-auto h-full bg-blue-50 rounded-sm" style="width: {{ ($heavy->total_queries / $maxQueryCount) * 100 }}%;"></div>
+                                </div>
+                                <span class="relative z-10">{{ number_format($heavy->total_queries) }}</span>
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>

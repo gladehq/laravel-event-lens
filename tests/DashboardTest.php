@@ -289,6 +289,31 @@ it('shows total queries on statistics page', function () {
         ->assertSee('2');
 });
 
+it('shows execution time distribution on statistics page', function () {
+    // Fast events (0-10ms bucket)
+    EventLog::factory()->root()->create(['execution_time_ms' => 5, 'happened_at' => now()]);
+    EventLog::factory()->root()->create(['execution_time_ms' => 8, 'happened_at' => now()]);
+
+    // Medium events (10-50ms bucket)
+    EventLog::factory()->root()->create(['execution_time_ms' => 25, 'happened_at' => now()]);
+
+    // Slow events (100-500ms bucket)
+    EventLog::factory()->root()->create(['execution_time_ms' => 200, 'happened_at' => now()]);
+
+    // Very slow events (500ms+ bucket)
+    EventLog::factory()->root()->create(['execution_time_ms' => 1000, 'happened_at' => now()]);
+
+    get(route('event-lens.statistics'))
+        ->assertOk()
+        ->assertSee('Execution Time Distribution')
+        ->assertSee('Event count per latency bucket')
+        ->assertSee('0-10ms')
+        ->assertSee('10-50ms')
+        ->assertSee('50-100ms')
+        ->assertSee('100-500ms')
+        ->assertSee('500ms+');
+});
+
 // -- Polling API Tests --
 
 it('returns events after a given id', function () {

@@ -147,6 +147,15 @@ class EventLensController extends Controller
                     ->orderByDesc('count')
                     ->get()
                     ->groupBy('event_name'),
+                'execution_distribution' => EventLog::roots()
+                    ->betweenDates($startDate, $endDate)
+                    ->selectRaw("
+                        SUM(CASE WHEN execution_time_ms <= 10 THEN 1 ELSE 0 END) as bucket_0_10,
+                        SUM(CASE WHEN execution_time_ms > 10 AND execution_time_ms <= 50 THEN 1 ELSE 0 END) as bucket_10_50,
+                        SUM(CASE WHEN execution_time_ms > 50 AND execution_time_ms <= 100 THEN 1 ELSE 0 END) as bucket_50_100,
+                        SUM(CASE WHEN execution_time_ms > 100 AND execution_time_ms <= 500 THEN 1 ELSE 0 END) as bucket_100_500,
+                        SUM(CASE WHEN execution_time_ms > 500 THEN 1 ELSE 0 END) as bucket_500_plus
+                    ")->first(),
             ];
         });
 
