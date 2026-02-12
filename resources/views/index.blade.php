@@ -170,7 +170,7 @@
                                         </template>
                                     </div>
                                     <p class="text-xs text-gray-500">
-                                        <span x-text="event.happened_at"></span> &middot; <span x-text="event.correlation_id"></span>
+                                        <span x-text="event.happened_at_human"></span> &middot; <span x-text="event.correlation_id"></span>
                                     </p>
                                     <template x-if="event.payload_summary && Object.keys(event.payload_summary).length > 0">
                                         <p class="text-xs text-gray-400 truncate">
