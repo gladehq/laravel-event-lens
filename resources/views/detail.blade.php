@@ -24,8 +24,19 @@
                 </div>
                 <div class="px-5 py-3 flex justify-between">
                     <dt class="text-sm text-gray-500">Correlation ID</dt>
-                    <dd class="text-sm font-mono text-gray-900">
+                    <dd class="text-sm font-mono text-gray-900 flex items-center gap-2">
                         <a href="{{ route('event-lens.show', $event->correlation_id) }}" class="text-indigo-600 hover:underline">{{ $event->correlation_id }}</a>
+                        <button x-data="{ copied: false }"
+                            @click="navigator.clipboard.writeText('{{ $event->correlation_id }}'); copied = true; setTimeout(() => copied = false, 1500)"
+                            class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                            title="Copy Correlation ID">
+                            <template x-if="!copied">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            </template>
+                            <template x-if="copied">
+                                <span class="text-xs font-medium text-green-600">Copied!</span>
+                            </template>
+                        </button>
                     </dd>
                 </div>
                 @if($event->parent_event_id)
@@ -101,12 +112,26 @@
     @endif
 
     {{-- Payload --}}
-    <div x-data="{ showPayload: true }" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
-        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between cursor-pointer" @click="showPayload = !showPayload">
-            <h2 class="text-sm font-semibold text-gray-700">Payload</h2>
-            <svg :class="showPayload ? 'rotate-180' : ''" class="w-4 h-4 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-            </svg>
+    <div x-data="{ showPayload: true, copiedPayload: false }" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-700 cursor-pointer" @click="showPayload = !showPayload">Payload</h2>
+            <div class="flex items-center gap-2">
+                @if($event->payload)
+                    <button @click.stop="navigator.clipboard.writeText({{ e(json_encode(json_encode(collect($event->payload)->except('__context')->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), JSON_UNESCAPED_SLASHES)) }}); copiedPayload = true; setTimeout(() => copiedPayload = false, 1500)"
+                        class="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                        title="Copy payload JSON">
+                        <template x-if="!copiedPayload">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        </template>
+                        <template x-if="copiedPayload">
+                            <span class="text-xs font-medium text-green-600">Copied!</span>
+                        </template>
+                    </button>
+                @endif
+                <svg @click="showPayload = !showPayload" :class="showPayload ? 'rotate-180' : ''" class="w-4 h-4 text-gray-400 transition-transform cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
         </div>
         <div x-show="showPayload" x-cloak class="p-5">
             @if($event->payload)

@@ -15,10 +15,15 @@
     {{-- Search / Filter --}}
     <form method="GET" action="{{ route('event-lens.index') }}" class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
         <div class="p-4 space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-xs font-semibold text-gray-700 mb-1">Event Name</label>
                     <input type="text" name="event" value="{{ request('event') }}" placeholder="App\Events\..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Listener</label>
+                    <input type="text" name="listener" value="{{ request('listener') }}" placeholder="App\Listeners\..."
                         class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                 </div>
                 <div>
@@ -56,7 +61,7 @@
                     </div>
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div x-data="{ showHelp: false }">
                     <label class="block text-xs font-semibold text-gray-700 mb-1">
                         Tag Contains
@@ -104,6 +109,11 @@
                     class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                 <span class="text-sm text-gray-700">Slow events only (&gt;{{ $slowThreshold }}ms)</span>
             </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" name="errors" value="1" {{ request('errors') ? 'checked' : '' }}
+                    class="rounded border-gray-300 text-red-600 focus:ring-red-500">
+                <span class="text-sm text-gray-700">Errors only</span>
+            </label>
             <div class="flex-1"></div>
             <a href="{{ route('event-lens.index') }}" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Clear</a>
             <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700">
@@ -127,6 +137,15 @@
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <p class="text-sm font-medium text-indigo-600 truncate" x-text="event.event_name"></p>
+                                        <template x-if="event.has_error">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">ERR</span>
+                                        </template>
+                                        <template x-if="event.side_effects && event.side_effects.queries > 0">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" x-text="event.side_effects.queries + 'q'"></span>
+                                        </template>
+                                        <template x-if="event.side_effects && event.side_effects.mails > 0">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" x-text="event.side_effects.mails + 'm'"></span>
+                                        </template>
                                         <template x-if="event.tags && Object.keys(event.tags).length > 0">
                                             <span x-data="{ showTags: false }" class="relative inline-flex">
                                                 <button type="button" @click.prevent.stop="showTags = true"
@@ -204,6 +223,15 @@
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <p class="text-sm font-medium text-indigo-600 truncate">{{ $event->event_name }}</p>
+                                        @if($event->exception)
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">ERR</span>
+                                        @endif
+                                        @if(($event->side_effects['queries'] ?? 0) > 0)
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">{{ $event->side_effects['queries'] }}q</span>
+                                        @endif
+                                        @if(($event->side_effects['mails'] ?? 0) > 0)
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">{{ $event->side_effects['mails'] }}m</span>
+                                        @endif
                                         @include('event-lens::partials.tags-badge', ['tags' => $event->tags])
                                     </div>
                                     <p class="text-xs text-gray-500">{{ $event->happened_at->diffForHumans() }} &middot; {{ $event->correlation_id }}</p>

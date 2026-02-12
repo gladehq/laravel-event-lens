@@ -151,6 +151,20 @@ class EventLog extends Model
         });
     }
 
+    public function scopeWithErrors(Builder $query): Builder
+    {
+        return $query->whereNotNull('exception');
+    }
+
+    public function scopeForListener(Builder $query, ?string $listener): Builder
+    {
+        return $query->when($listener, function ($q) use ($listener) {
+            $escaped = str_replace(['%', '_'], ['\%', '\_'], $listener);
+
+            return $q->whereRaw("listener_name LIKE ? ESCAPE '\\'", ["%{$escaped}%"]);
+        });
+    }
+
     public function scopeWithMinQueries(Builder $query, int $min = 1): Builder
     {
         $driver = $query->getConnection()->getDriverName();

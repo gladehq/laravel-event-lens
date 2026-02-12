@@ -186,3 +186,33 @@ it('supports factory states', function () {
     expect($event->side_effects['queries'])->toBe(5);
     expect($event->side_effects['mails'])->toBe(2);
 });
+
+it('scopes to events with errors', function () {
+    EventLog::insert([
+        ['event_id' => 'ok', 'correlation_id' => 'c1', 'event_name' => 'App\Events\Ok', 'listener_name' => 'Closure', 'exception' => null, 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'err', 'correlation_id' => 'c2', 'event_name' => 'App\Events\Err', 'listener_name' => 'Closure', 'exception' => 'RuntimeException: fail', 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::withErrors()->count())->toBe(1)
+        ->and(EventLog::withErrors()->first()->event_id)->toBe('err');
+});
+
+it('scopes by listener name with like match', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App\Events\Order', 'listener_name' => 'App\Listeners\SendEmail', 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'App\Events\Order', 'listener_name' => 'App\Listeners\UpdateInventory', 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::forListener('SendEmail')->count())->toBe(1)
+        ->and(EventLog::forListener(null)->count())->toBe(2);
+});
+
+it('escapes LIKE wildcards in listener name search', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'A', 'listener_name' => 'App%Listeners', 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'B', 'listener_name' => 'App\Listeners\SendEmail', 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::forListener('App%Listeners')->count())->toBe(1)
+        ->and(EventLog::forListener('App%Listeners')->first()->event_id)->toBe('e1');
+});

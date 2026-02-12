@@ -19,7 +19,9 @@ class EventLensController extends Controller
             'correlation' => 'nullable|string|max:255',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date',
+            'listener' => 'nullable|string|max:255',
             'slow' => 'nullable|boolean',
+            'errors' => 'nullable|boolean',
             'payload' => 'nullable|string|max:255',
             'tag' => 'nullable|string|max:255',
         ]);
@@ -29,10 +31,12 @@ class EventLensController extends Controller
         $events = EventLog::roots()
             ->forEvent($request->get('event'))
             ->forCorrelation($request->get('correlation'))
+            ->forListener($request->get('listener'))
             ->forPayload($request->get('payload'))
             ->forTag($request->get('tag'))
             ->betweenDates($request->get('start_date'), $request->get('end_date'))
             ->when($request->boolean('slow'), fn ($q) => $q->slow($slowThreshold))
+            ->when($request->boolean('errors'), fn ($q) => $q->withErrors())
             ->latest('happened_at')
             ->paginate(20);
 
@@ -72,8 +76,13 @@ class EventLensController extends Controller
         $cacheKey = "event-lens:stats:v{$version}:" . md5(serialize([$startDate, $endDate]));
 
         $stats = Cache::remember($cacheKey, 120, function () use ($startDate, $endDate) {
+            $totalEvents = EventLog::roots()->betweenDates($startDate, $endDate)->count();
+            $errorCount = EventLog::roots()->betweenDates($startDate, $endDate)->withErrors()->count();
+
             return [
-                'total_events' => EventLog::roots()->betweenDates($startDate, $endDate)->count(),
+                'total_events' => $totalEvents,
+                'error_count' => $errorCount,
+                'error_rate' => $totalEvents > 0 ? round(($errorCount / $totalEvents) * 100, 1) : 0,
                 'avg_execution_time' => round(
                     (float) EventLog::roots()->betweenDates($startDate, $endDate)->avg('execution_time_ms'),
                     2

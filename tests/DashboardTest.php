@@ -120,6 +120,30 @@ it('shows payload summary on index page', function () {
         ->assertSee('status: pending');
 });
 
+it('can filter events with errors only', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App\Events\Ok', 'listener_name' => 'Closure', 'exception' => null, 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'App\Events\Broken', 'listener_name' => 'Closure', 'exception' => 'RuntimeException: fail', 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    get(route('event-lens.index', ['errors' => '1']))
+        ->assertOk()
+        ->assertSee('Broken')
+        ->assertDontSee('App\Events\Ok');
+});
+
+it('can filter events by listener name', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App\Events\Order', 'listener_name' => 'App\Listeners\SendEmail', 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'App\Events\Order', 'listener_name' => 'App\Listeners\UpdateInventory', 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    get(route('event-lens.index', ['listener' => 'SendEmail']))
+        ->assertOk()
+        ->assertSee('SendEmail')
+        ->assertDontSee('UpdateInventory');
+});
+
 // -- Statistics Page Tests --
 
 it('can view the statistics page', function () {

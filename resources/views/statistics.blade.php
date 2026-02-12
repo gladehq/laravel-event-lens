@@ -30,7 +30,7 @@
     </form>
 
     {{-- Summary Cards --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Events</p>
             <p class="text-3xl font-bold text-gray-900 mt-1">{{ number_format($stats['total_events']) }}</p>
@@ -47,6 +47,11 @@
             @else
                 <p class="text-3xl font-bold text-gray-400 mt-1">&mdash;</p>
             @endif
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-red-200 p-5">
+            <p class="text-xs font-semibold text-red-600 uppercase tracking-wider">Errors</p>
+            <p class="text-3xl font-bold text-red-600 mt-1">{{ number_format($stats['error_count']) }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ $stats['error_rate'] }}% error rate</p>
         </div>
     </div>
 
