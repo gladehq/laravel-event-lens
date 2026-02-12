@@ -71,13 +71,26 @@ class EventLensController extends Controller
 
         $startDate = $request->get('start_date', now()->subDays(7));
         $endDate = $request->get('end_date', now());
+        $slowThreshold = (float) config('event-lens.slow_threshold', 100.0);
 
         $version = Cache::get('event-lens:cache-version', 0);
         $cacheKey = "event-lens:stats:v{$version}:" . md5(serialize([$startDate, $endDate]));
 
-        $stats = Cache::remember($cacheKey, 120, function () use ($startDate, $endDate) {
+        $stats = Cache::remember($cacheKey, 120, function () use ($startDate, $endDate, $slowThreshold) {
             $totalEvents = EventLog::roots()->betweenDates($startDate, $endDate)->count();
             $errorCount = EventLog::roots()->betweenDates($startDate, $endDate)->withErrors()->count();
+
+            $driver = EventLog::query()->getConnection()->getDriverName();
+
+            $queriesExpr = match ($driver) {
+                'pgsql' => "COALESCE((side_effects::json->>'queries')::int, 0)",
+                default => "COALESCE(json_extract(side_effects, '$.queries'), 0)",
+            };
+
+            $mailsExpr = match ($driver) {
+                'pgsql' => "COALESCE((side_effects::json->>'mails')::int, 0)",
+                default => "COALESCE(json_extract(side_effects, '$.mails'), 0)",
+            };
 
             return [
                 'total_events' => $totalEvents,
@@ -87,6 +100,11 @@ class EventLensController extends Controller
                     (float) EventLog::roots()->betweenDates($startDate, $endDate)->avg('execution_time_ms'),
                     2
                 ),
+                'slow_count' => EventLog::roots()->betweenDates($startDate, $endDate)->slow($slowThreshold)->count(),
+                'total_queries' => (int) EventLog::roots()->betweenDates($startDate, $endDate)
+                    ->selectRaw("SUM({$queriesExpr}) as total")->value('total'),
+                'total_mails' => (int) EventLog::roots()->betweenDates($startDate, $endDate)
+                    ->selectRaw("SUM({$mailsExpr}) as total")->value('total'),
                 'slowest_events' => EventLog::roots()
                     ->betweenDates($startDate, $endDate)
                     ->orderByDesc('execution_time_ms')
@@ -101,14 +119,38 @@ class EventLensController extends Controller
                     ->get(),
                 'timeline' => EventLog::roots()
                     ->betweenDates($startDate, $endDate)
-                    ->selectRaw('DATE(happened_at) as date, COUNT(*) as count')
+                    ->selectRaw('DATE(happened_at) as date, COUNT(*) as count, SUM(CASE WHEN exception IS NOT NULL THEN 1 ELSE 0 END) as error_count')
                     ->groupBy('date')
                     ->orderBy('date')
                     ->get(),
+                'error_breakdown' => EventLog::roots()
+                    ->betweenDates($startDate, $endDate)
+                    ->withErrors()
+                    ->selectRaw('event_name, SUBSTR(exception, 1, 120) as exception_summary, COUNT(*) as count, MAX(happened_at) as last_seen')
+                    ->groupBy('event_name', 'exception_summary')
+                    ->orderByDesc('count')
+                    ->limit(10)
+                    ->get(),
+                'heaviest_events' => EventLog::roots()
+                    ->betweenDates($startDate, $endDate)
+                    ->selectRaw("event_name, COUNT(*) as count, AVG({$queriesExpr}) as avg_queries, SUM({$queriesExpr}) as total_queries")
+                    ->groupBy('event_name')
+                    ->havingRaw("SUM({$queriesExpr}) > 0")
+                    ->orderByDesc('total_queries')
+                    ->limit(10)
+                    ->get(),
+                'listener_breakdown' => EventLog::roots()
+                    ->betweenDates($startDate, $endDate)
+                    ->selectRaw('event_name, listener_name, COUNT(*) as count, AVG(execution_time_ms) as avg_time')
+                    ->groupBy('event_name', 'listener_name')
+                    ->orderBy('event_name')
+                    ->orderByDesc('count')
+                    ->get()
+                    ->groupBy('event_name'),
             ];
         });
 
-        return view('event-lens::statistics', compact('stats', 'startDate', 'endDate'));
+        return view('event-lens::statistics', compact('stats', 'startDate', 'endDate', 'slowThreshold'));
     }
 
     public function detail(string $eventId)

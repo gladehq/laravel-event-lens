@@ -243,6 +243,52 @@ it('shows tags on detail page', function () {
         ->assertSee('high');
 });
 
+// -- Enhanced Statistics Page Tests --
+
+it('shows error breakdown on statistics page', function () {
+    EventLog::factory()->root()->withException('Connection refused')->create([
+        'event_name' => 'App\Events\PaymentFailed',
+        'happened_at' => now(),
+    ]);
+    EventLog::factory()->root()->withException('Connection refused')->create([
+        'event_name' => 'App\Events\PaymentFailed',
+        'happened_at' => now(),
+    ]);
+    EventLog::factory()->root()->withException('Timeout exceeded')->create([
+        'event_name' => 'App\Events\SyncFailed',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.statistics'))
+        ->assertOk()
+        ->assertSee('Top Errors')
+        ->assertSee('App\Events\PaymentFailed')
+        ->assertSee('Connection refused');
+});
+
+it('shows slow count on statistics page', function () {
+    EventLog::factory()->root()->slow(500)->create(['happened_at' => now()]);
+    EventLog::factory()->root()->slow(200)->create(['happened_at' => now()]);
+    EventLog::factory()->root()->create(['execution_time_ms' => 10, 'happened_at' => now()]);
+
+    get(route('event-lens.statistics'))
+        ->assertOk()
+        ->assertSee('Slow Events')
+        ->assertSee('2'); // 2 slow events
+});
+
+it('shows total queries on statistics page', function () {
+    EventLog::factory()->root()->withSideEffects(queries: 5, mails: 0)->create(['happened_at' => now()]);
+    EventLog::factory()->root()->withSideEffects(queries: 3, mails: 2)->create(['happened_at' => now()]);
+
+    get(route('event-lens.statistics'))
+        ->assertOk()
+        ->assertSee('Total DB Queries')
+        ->assertSee('8')
+        ->assertSee('Total Mails Sent')
+        ->assertSee('2');
+});
+
 // -- Polling API Tests --
 
 it('returns events after a given id', function () {
