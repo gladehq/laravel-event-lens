@@ -126,7 +126,7 @@ class EventRecorder
             $modelInfo = $this->collector->collectModelInfo($eventObj);
             $tags = $this->collector->collectTags($eventObj);
 
-            $this->buffer->push([
+            $record = [
                 'event_id' => $eventId,
                 'correlation_id' => $correlationId,
                 'parent_event_id' => $parentEventId,
@@ -137,11 +137,16 @@ class EventRecorder
                 'model_changes' => $modelInfo['model_changes'] ?: null,
                 'model_type' => $modelInfo['model_type'],
                 'model_id' => $modelInfo['model_id'],
-                'tags' => $tags,
                 'exception' => $exception ? substr($exception, 0, 2048) : null,
                 'execution_time_ms' => $duration,
                 'happened_at' => now(),
-            ]);
+            ];
+
+            if ($tags !== null) {
+                $record['tags'] = $tags;
+            }
+
+            $this->buffer->push($record);
         } catch (\Throwable $e) {
             Log::warning('EventLens: Failed to persist event', [
                 'error' => $e->getMessage(),
