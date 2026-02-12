@@ -13,68 +13,97 @@
     </div>
 
     {{-- Search / Filter --}}
-    <form method="GET" action="{{ route('event-lens.index') }}" class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1">Event Name</label>
-                <input type="text" name="event" value="{{ request('event') }}" placeholder="App\Events\..."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1">Correlation ID</label>
-                <input type="text" name="correlation" value="{{ request('correlation') }}" placeholder="uuid..."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            </div>
-            <div x-data="{ showHelp: false }">
-                <label class="block text-xs font-semibold text-gray-700 mb-1">
-                    Payload Contains
-                    <button type="button" @click.prevent="showHelp = true" class="inline-flex items-center justify-center w-4 h-4 ml-0.5 rounded-full bg-gray-200 text-gray-500 hover:bg-gray-300 hover:text-gray-700 text-[10px] font-bold leading-none align-middle">?</button>
-                </label>
-                <input type="text" name="payload" value="{{ request('payload') }}" placeholder="search payload..."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                <div x-show="showHelp" x-cloak class="fixed inset-0 z-50 flex items-center justify-center">
-                    <div class="absolute inset-0 bg-black/30" @click="showHelp = false"></div>
-                    <div class="relative bg-white rounded-lg shadow-lg border border-gray-200 p-5 max-w-sm w-full mx-4" @click.stop>
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-sm font-semibold text-gray-900">Payload Contains</h3>
-                            <button type="button" @click="showHelp = false" class="text-gray-400 hover:text-gray-600">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
-                        </div>
-                        <div class="text-xs text-gray-600 space-y-2">
-                            <p>Searches for the term anywhere inside the stored JSON payload using a substring match.</p>
-                            <p class="font-medium text-gray-700">Examples:</p>
-                            <ul class="list-disc pl-4 space-y-1">
-                                <li><code class="bg-gray-100 px-1 rounded">Alice</code> matches <code class="bg-gray-100 px-1 rounded">{"customer": "Alice"}</code></li>
-                                <li><code class="bg-gray-100 px-1 rounded">order_id</code> matches any payload containing that key</li>
-                                <li><code class="bg-gray-100 px-1 rounded">42</code> matches any payload containing that number</li>
-                            </ul>
-                            <p class="text-gray-400">Note: this is a text search, not a key-specific query. A search for "42" will also match "421" or "X42Y".</p>
+    <form method="GET" action="{{ route('event-lens.index') }}" class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div class="p-4 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Event Name</label>
+                    <input type="text" name="event" value="{{ request('event') }}" placeholder="App\Events\..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Correlation ID</label>
+                    <input type="text" name="correlation" value="{{ request('correlation') }}" placeholder="uuid..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
+                <div x-data="{ showHelp: false }">
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">
+                        Payload Contains
+                        <button type="button" @click.prevent="showHelp = true" class="inline-flex items-center justify-center w-4 h-4 ml-0.5 rounded-full bg-gray-200 text-gray-500 hover:bg-gray-300 hover:text-gray-700 text-[10px] font-bold leading-none align-middle">?</button>
+                    </label>
+                    <input type="text" name="payload" value="{{ request('payload') }}" placeholder="search payload..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <div x-show="showHelp" x-cloak class="fixed inset-0 z-50 flex items-center justify-center">
+                        <div class="absolute inset-0 bg-black/30" @click="showHelp = false"></div>
+                        <div class="relative bg-white rounded-lg shadow-lg border border-gray-200 p-5 max-w-sm w-full mx-4" @click.stop>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-semibold text-gray-900">Payload Contains</h3>
+                                <button type="button" @click="showHelp = false" class="text-gray-400 hover:text-gray-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                            <div class="text-xs text-gray-600 space-y-2">
+                                <p>Searches for the term anywhere inside the stored JSON payload using a substring match.</p>
+                                <p class="font-medium text-gray-700">Examples:</p>
+                                <ul class="list-disc pl-4 space-y-1">
+                                    <li><code class="bg-gray-100 px-1 rounded">Alice</code> matches <code class="bg-gray-100 px-1 rounded">{"customer": "Alice"}</code></li>
+                                    <li><code class="bg-gray-100 px-1 rounded">order_id</code> matches any payload containing that key</li>
+                                    <li><code class="bg-gray-100 px-1 rounded">42</code> matches any payload containing that number</li>
+                                </ul>
+                                <p class="text-gray-400">Note: this is a text search, not a key-specific query. A search for "42" will also match "421" or "X42Y".</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1">Start Date</label>
-                <input type="datetime-local" name="start_date" value="{{ request('start_date') }}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1">End Date</label>
-                <input type="datetime-local" name="end_date" value="{{ request('end_date') }}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div x-data="{ showHelp: false }">
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">
+                        Tag Contains
+                        <button type="button" @click.prevent="showHelp = true" class="inline-flex items-center justify-center w-4 h-4 ml-0.5 rounded-full bg-gray-200 text-gray-500 hover:bg-gray-300 hover:text-gray-700 text-[10px] font-bold leading-none align-middle">?</button>
+                    </label>
+                    <input type="text" name="tag" value="{{ request('tag') }}" placeholder="search tags..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <div x-show="showHelp" x-cloak class="fixed inset-0 z-50 flex items-center justify-center">
+                        <div class="absolute inset-0 bg-black/30" @click="showHelp = false"></div>
+                        <div class="relative bg-white rounded-lg shadow-lg border border-gray-200 p-5 max-w-sm w-full mx-4" @click.stop>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-semibold text-gray-900">Tag Contains</h3>
+                                <button type="button" @click="showHelp = false" class="text-gray-400 hover:text-gray-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                            <div class="text-xs text-gray-600 space-y-2">
+                                <p>Searches for the term anywhere inside the stored tags JSON using a substring match. Tags are key-value pairs set by events implementing the <code class="bg-gray-100 px-1 rounded">Taggable</code> interface.</p>
+                                <p class="font-medium text-gray-700">Examples:</p>
+                                <ul class="list-disc pl-4 space-y-1">
+                                    <li><code class="bg-gray-100 px-1 rounded">production</code> matches <code class="bg-gray-100 px-1 rounded">{"env": "production"}</code></li>
+                                    <li><code class="bg-gray-100 px-1 rounded">priority</code> matches any event tagged with that key</li>
+                                    <li><code class="bg-gray-100 px-1 rounded">high</code> matches any tag value containing "high"</li>
+                                </ul>
+                                <p class="text-gray-400">Note: this is a text search across both keys and values, not a key-specific query.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Start Date</label>
+                    <input type="datetime-local" name="start_date" value="{{ request('start_date') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">End Date</label>
+                    <input type="datetime-local" name="end_date" value="{{ request('end_date') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
             </div>
         </div>
-        <div class="mt-3 flex items-center gap-4">
+        <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 rounded-b-lg flex items-center gap-4">
             <label class="flex items-center gap-2">
                 <input type="checkbox" name="slow" value="1" {{ request('slow') ? 'checked' : '' }}
                     class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                 <span class="text-sm text-gray-700">Slow events only (&gt;{{ $slowThreshold }}ms)</span>
             </label>
-            <div class="w-48">
-                <input type="text" name="tag" value="{{ request('tag') }}" placeholder="Tag contains..."
-                    class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            </div>
             <div class="flex-1"></div>
             <a href="{{ route('event-lens.index') }}" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Clear</a>
             <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700">
