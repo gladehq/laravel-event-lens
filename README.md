@@ -10,12 +10,12 @@ Deep observability for Laravel Events and Listeners with execution tracing, wate
 - **Payload inspection** - Safe serialization with binary detection, depth limits, string truncation and key redaction
 - **Model change tracking** - Automatic dirty-state capture for Eloquent models in event payloads
 - **Polymorphic model linking** - Associate events with models via `HasEventLens` trait
-- **Exception capture** - Record exceptions thrown during listener execution
+- **Exception capture** - Record exceptions thrown during listener execution with error filtering and breakdown
 - **Event tagging** - Opt-in structured metadata via `Taggable` interface with dashboard filtering
 - **Cross-queue tracing** - Correlation ID propagation through queued jobs
 - **Octane safe** - Automatic state reset between requests
 - **Sampling** - Configurable rate to minimize production overhead
-- **Statistics dashboard** - Aggregate views with cached queries
+- **Statistics dashboard** - Error breakdown, query load ranking, listener-level drill-down, daily timeline with error overlay, and quick date presets
 
 ## Requirements
 
@@ -62,10 +62,10 @@ All options live in `config/event-lens.php`:
 
 Visit `/event-lens` (or your configured path) to access:
 
-- **Stream** - Live event feed with search, date filtering, tag filtering and slow-only toggle
-- **Statistics** - Aggregate metrics, slowest events and daily volume
-- **Waterfall** - Per-correlation execution tree with timing visualization
-- **Detail** - Individual event inspection with payload, tags, side effects and exception data
+- **Stream** - Live event feed with filtering by event name, listener name, payload content, tag content, date range, slow-only and errors-only toggles. Each row shows inline badges for errors, query counts, mail counts and tags.
+- **Statistics** - Summary cards (total events, avg execution time, slow count, error rate, total queries, total mails), daily volume bar chart with error overlay, top events by frequency with expandable per-listener breakdown, slowest individual events, heaviest events by query load, and error breakdown grouped by exception type. Quick date presets (Today, 7d, 30d) and clickable event names for drill-down to the stream.
+- **Waterfall** - Per-correlation execution tree with timing bars, query/mail counts and error badges per node
+- **Detail** - Individual event inspection with payload (copy to clipboard), correlation ID (copy to clipboard), tags, side effects and exception data
 
 ### Authorization
 
@@ -192,6 +192,9 @@ Views will be published to `resources/views/vendor/event-lens/`.
 | Cross-queue correlation | No | Yes |
 | Custom watchers | No | Yes (pluggable interface) |
 | Event tagging | No | Yes (opt-in Taggable interface) |
+| Error breakdown by exception type | No | Yes |
+| Query load ranking per event | No | Yes |
+| Per-listener performance breakdown | No | Yes (expandable in statistics) |
 | Footprint | Heavy | Lightweight |
 
 ## License
