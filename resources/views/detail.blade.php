@@ -8,31 +8,37 @@
         <p class="text-xs font-mono text-gray-400 mt-1">{{ $event->event_id }}</p>
 
         {{-- Prev/Next Sibling Navigation --}}
-        <div class="flex items-center gap-3 mt-3">
-            @if($prevEvent)
-                <a href="{{ route('event-lens.detail', $prevEvent->event_id) }}" class="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                    {{ Str::limit($prevEvent->listener_name, 30) }}
-                </a>
-            @else
-                <span class="inline-flex items-center gap-1 text-sm text-gray-300 cursor-not-allowed">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                    Previous
-                </span>
-            @endif
-            <span class="text-gray-400">&middot;</span>
-            @if($nextEvent)
-                <a href="{{ route('event-lens.detail', $nextEvent->event_id) }}" class="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800">
-                    {{ Str::limit($nextEvent->listener_name, 30) }}
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                </a>
-            @else
-                <span class="inline-flex items-center gap-1 text-sm text-gray-300 cursor-not-allowed">
-                    Next
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                </span>
-            @endif
-        </div>
+        @if($prevEvent || $nextEvent)
+            <div class="flex items-center justify-between mt-4 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div class="flex-1 min-w-0">
+                    @if($prevEvent)
+                        <a href="{{ route('event-lens.detail', $prevEvent->event_id) }}" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                            <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                            <div class="min-w-0">
+                                <p class="text-xs text-gray-400">Previous</p>
+                                <p class="text-sm font-medium text-gray-900 truncate">{{ $prevEvent->listener_name }}</p>
+                            </div>
+                        </a>
+                    @else
+                        <div class="px-4 py-3"></div>
+                    @endif
+                </div>
+                <div class="border-l border-gray-200 h-12 shrink-0"></div>
+                <div class="flex-1 min-w-0">
+                    @if($nextEvent)
+                        <a href="{{ route('event-lens.detail', $nextEvent->event_id) }}" class="flex items-center justify-end gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                            <div class="min-w-0 text-right">
+                                <p class="text-xs text-gray-400">Next</p>
+                                <p class="text-sm font-medium text-gray-900 truncate">{{ $nextEvent->listener_name }}</p>
+                            </div>
+                            <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </a>
+                    @else
+                        <div class="px-4 py-3"></div>
+                    @endif
+                </div>
+            </div>
+        @endif
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">

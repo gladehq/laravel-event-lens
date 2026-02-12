@@ -405,14 +405,14 @@ it('shows prev and next sibling links on detail page', function () {
     // First sibling: no prev, has next
     get(route('event-lens.detail', 'sib-1'))
         ->assertOk()
-        ->assertSee('Previous')  // disabled "Previous" text
+        ->assertSee('Next')
         ->assertSee('ListenerB');
 
     // Last sibling: has prev, no next
     get(route('event-lens.detail', 'sib-3'))
         ->assertOk()
-        ->assertSee('ListenerB')
-        ->assertSee('Next');  // disabled "Next" text
+        ->assertSee('Previous')
+        ->assertSee('ListenerB');
 });
 
 // -- Meaningful Detail Header Tests --
