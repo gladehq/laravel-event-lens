@@ -124,6 +124,7 @@ class EventRecorder
             }
 
             $modelInfo = $this->collector->collectModelInfo($eventObj);
+            $tags = $this->collector->collectTags($eventObj);
 
             $this->buffer->push([
                 'event_id' => $eventId,
@@ -136,6 +137,7 @@ class EventRecorder
                 'model_changes' => $modelInfo['model_changes'] ?: null,
                 'model_type' => $modelInfo['model_type'],
                 'model_id' => $modelInfo['model_id'],
+                'tags' => $tags,
                 'exception' => $exception ? substr($exception, 0, 2048) : null,
                 'execution_time_ms' => $duration,
                 'happened_at' => now(),

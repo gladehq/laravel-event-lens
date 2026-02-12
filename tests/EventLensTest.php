@@ -1,6 +1,7 @@
 <?php
 
 use GladeHQ\LaravelEventLens\Models\EventLog;
+use GladeHQ\LaravelEventLens\Tests\Fixtures\TaggableEvent;
 use GladeHQ\LaravelEventLens\Tests\Fixtures\TestEvent;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Config;
@@ -123,8 +124,22 @@ it('provides a polling api', function () {
     EventLog::truncate();
     event(new TestEvent());
     app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
-    
+
     get(route('event-lens.api.latest'))
         ->assertOk()
         ->assertJsonStructure(['data' => [['id', 'event_name', 'execution_time_ms']]]);
+});
+
+it('collects tags from Taggable events', function () {
+    Event::listen(TaggableEvent::class, function ($event) {
+        return 'handled';
+    });
+
+    event(new TaggableEvent('active'));
+    app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
+
+    $log = EventLog::whereNull('parent_event_id')->first();
+
+    expect($log)->not->toBeNull()
+        ->and($log->tags)->toBe(['user_status' => 'active']);
 });

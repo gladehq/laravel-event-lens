@@ -24,6 +24,7 @@ class EventLogResource extends JsonResource
             'happened_at' => $this->happened_at?->toIso8601String(),
             'happened_at_human' => $this->happened_at?->diffForHumans(),
             'payload_summary' => $this->payload_summary,
+            'tags' => $this->tags,
             'url' => route('event-lens.show', $this->correlation_id),
         ];
     }

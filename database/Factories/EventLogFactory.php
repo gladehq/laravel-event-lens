@@ -70,4 +70,11 @@ class EventLogFactory extends Factory
             'side_effects' => ['queries' => $queries, 'mails' => $mails],
         ]);
     }
+
+    public function withTags(array $tags): static
+    {
+        return $this->state(fn () => [
+            'tags' => $tags,
+        ]);
+    }
 }

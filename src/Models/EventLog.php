@@ -23,6 +23,7 @@ use Illuminate\Support\Str;
  * @property string|null $exception
  * @property string|null $model_type
  * @property int|null $model_id
+ * @property array|null $tags
  * @property float $execution_time_ms
  * @property \Illuminate\Support\Carbon $happened_at
  * @property \Illuminate\Support\Carbon $created_at
@@ -41,6 +42,7 @@ class EventLog extends Model
         'payload' => 'array',
         'side_effects' => 'array',
         'model_changes' => 'array',
+        'tags' => 'array',
         'happened_at' => 'datetime',
     ];
 
@@ -137,6 +139,15 @@ class EventLog extends Model
             $escaped = str_replace(['%', '_'], ['\%', '\_'], $term);
 
             return $q->whereRaw("payload LIKE ? ESCAPE '\\'", ["%{$escaped}%"]);
+        });
+    }
+
+    public function scopeForTag(Builder $query, ?string $term): Builder
+    {
+        return $query->when($term, function ($q) use ($term) {
+            $escaped = str_replace(['%', '_'], ['\%', '\_'], $term);
+
+            return $q->whereRaw("tags LIKE ? ESCAPE '\\'", ["%{$escaped}%"]);
         });
     }
 

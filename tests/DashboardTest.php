@@ -97,6 +97,18 @@ it('can filter events by payload content', function () {
         ->assertDontSee('UserRegistered');
 });
 
+it('can filter events by tag content', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App\Events\OrderPlaced', 'listener_name' => 'Closure', 'tags' => json_encode(['user_status' => 'active']), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'App\Events\UserRegistered', 'listener_name' => 'Closure', 'tags' => json_encode(['priority' => 'low']), 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    get(route('event-lens.index', ['tag' => 'active']))
+        ->assertOk()
+        ->assertSee('OrderPlaced')
+        ->assertDontSee('UserRegistered');
+});
+
 it('shows payload summary on index page', function () {
     EventLog::insert([
         ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App\Events\OrderPlaced', 'listener_name' => 'Closure', 'payload' => json_encode(['order_id' => 42, 'status' => 'pending']), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
@@ -180,6 +192,31 @@ it('shows totalMails in the waterfall view', function () {
     get(route('event-lens.show', 'cor-mail'))
         ->assertOk()
         ->assertViewHas('totalMails', 2);
+});
+
+// -- Tags Display Tests --
+
+it('shows tags badge on index page', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App\Events\Tagged', 'listener_name' => 'Closure', 'tags' => json_encode(['env' => 'production']), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    get(route('event-lens.index'))
+        ->assertOk()
+        ->assertSee('Tags');
+});
+
+it('shows tags on detail page', function () {
+    EventLog::insert([
+        ['event_id' => 'evt-tags', 'correlation_id' => 'cor-tags', 'event_name' => 'App\Events\Tagged', 'listener_name' => 'Closure', 'tags' => json_encode(['env' => 'production', 'priority' => 'high']), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    get(route('event-lens.detail', 'evt-tags'))
+        ->assertOk()
+        ->assertSee('env')
+        ->assertSee('production')
+        ->assertSee('priority')
+        ->assertSee('high');
 });
 
 // -- Polling API Tests --

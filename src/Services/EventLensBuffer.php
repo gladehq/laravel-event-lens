@@ -46,6 +46,9 @@ class EventLensBuffer
                 if (isset($event['model_changes']) && is_array($event['model_changes'])) {
                     $event['model_changes'] = json_encode($event['model_changes'], $jsonFlags);
                 }
+                if (isset($event['tags']) && is_array($event['tags'])) {
+                    $event['tags'] = json_encode($event['tags'], $jsonFlags);
+                }
 
                 if (isset($event['happened_at']) && $event['happened_at'] instanceof \DateTimeInterface) {
                     $event['happened_at'] = $event['happened_at']->format('Y-m-d H:i:s');

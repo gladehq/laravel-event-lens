@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GladeHQ\LaravelEventLens\Collectors;
 
+use GladeHQ\LaravelEventLens\Contracts\Taggable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
@@ -51,6 +52,15 @@ class EventCollector
             'model_type' => $modelType,
             'model_id' => $modelId,
         ];
+    }
+
+    public function collectTags($event): ?array
+    {
+        if ($event instanceof Taggable) {
+            return $event->eventLensTags();
+        }
+
+        return null;
     }
 
     protected function serialize($data): array

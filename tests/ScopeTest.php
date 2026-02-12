@@ -143,6 +143,36 @@ it('escapes LIKE wildcards in payload search', function () {
         ->and(EventLog::forPayload('50%')->first()->event_id)->toBe('e1');
 });
 
+it('filters events by tag content', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'A', 'listener_name' => 'Closure', 'tags' => json_encode(['user_status' => 'active']), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'B', 'listener_name' => 'Closure', 'tags' => json_encode(['priority' => 'low']), 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::forTag('active')->count())->toBe(1)
+        ->and(EventLog::forTag('active')->first()->event_id)->toBe('e1');
+});
+
+it('returns all events when tag filter is null', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'A', 'listener_name' => 'Closure', 'tags' => json_encode(['k' => 'v']), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'B', 'listener_name' => 'Closure', 'tags' => json_encode(['k' => 'other']), 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::forTag(null)->count())->toBe(2)
+        ->and(EventLog::forTag('')->count())->toBe(2);
+});
+
+it('escapes LIKE wildcards in tag search', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'A', 'listener_name' => 'Closure', 'tags' => json_encode(['discount' => '50%']), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'B', 'listener_name' => 'Closure', 'tags' => json_encode(['amount' => '500']), 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::forTag('50%')->count())->toBe(1)
+        ->and(EventLog::forTag('50%')->first()->event_id)->toBe('e1');
+});
+
 it('can create events using factory', function () {
     EventLog::factory()->count(3)->create();
 
