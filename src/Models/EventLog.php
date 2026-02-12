@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
@@ -26,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property \Illuminate\Support\Carbon $happened_at
  * @property \Illuminate\Support\Carbon $created_at
  * @property \Illuminate\Support\Carbon $updated_at
+ * @property-read array $payload_summary
  */
 class EventLog extends Model
 {
@@ -69,6 +71,33 @@ class EventLog extends Model
         return $this->morphTo();
     }
 
+    // -- Accessors --
+
+    public function getPayloadSummaryAttribute(): array
+    {
+        if ($this->payload === null) {
+            return [];
+        }
+
+        $summary = [];
+
+        foreach ($this->payload as $key => $value) {
+            if ($key === '__context') {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $summary[$key] = array_is_list($value)
+                    ? '['.count($value).' items]'
+                    : '{Object}';
+            } else {
+                $summary[$key] = Str::limit((string) $value, 50);
+            }
+        }
+
+        return $summary;
+    }
+
     // -- Query Scopes --
 
     public function scopeRoots(Builder $query): Builder
@@ -100,6 +129,15 @@ class EventLog extends Model
         return $query
             ->when($startDate, fn ($q) => $q->where('happened_at', '>=', $startDate))
             ->when($endDate, fn ($q) => $q->where('happened_at', '<=', $endDate));
+    }
+
+    public function scopeForPayload(Builder $query, ?string $term): Builder
+    {
+        return $query->when($term, function ($q) use ($term) {
+            $escaped = str_replace(['%', '_'], ['\%', '\_'], $term);
+
+            return $q->whereRaw("payload LIKE ? ESCAPE '\\'", ["%{$escaped}%"]);
+        });
     }
 
     public function scopeWithMinQueries(Builder $query, int $min = 1): Builder

@@ -91,7 +91,31 @@
         </div>
         <div x-show="showPayload" x-cloak class="p-5">
             @if($event->payload)
-                <pre class="text-xs font-mono text-gray-800 bg-gray-50 rounded-lg p-4 overflow-x-auto max-h-96">{{ json_encode($event->payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                <dl class="divide-y divide-gray-100">
+                    @foreach($event->payload as $key => $value)
+                        @if($key === '__context')
+                            @continue
+                        @endif
+                        <div class="px-2 py-3 flex flex-col gap-1">
+                            <dt class="text-xs font-semibold text-gray-500">{{ $key }}</dt>
+                            @if(is_array($value))
+                                <dd x-data="{ expanded: false }">
+                                    <button @click="expanded = !expanded" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                                        <span x-text="expanded ? 'Collapse' : 'Expand ({{ array_is_list($value) ? count($value) . ' items' : count($value) . ' keys' }})'"></span>
+                                    </button>
+                                    <pre x-show="expanded" x-cloak class="mt-2 text-xs font-mono text-gray-800 bg-gray-50 rounded-lg p-3 overflow-x-auto">{{ json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                                </dd>
+                            @else
+                                <dd class="text-sm font-mono text-gray-900">{{ $value === null ? 'null' : (is_bool($value) ? ($value ? 'true' : 'false') : $value) }}</dd>
+                            @endif
+                        </div>
+                    @endforeach
+                </dl>
+                @if(isset($event->payload['__context']))
+                    <p class="mt-3 text-xs text-gray-400 border-t border-gray-100 pt-3">
+                        Triggered from: {{ is_array($event->payload['__context']) ? implode(':', $event->payload['__context']) : $event->payload['__context'] }}
+                    </p>
+                @endif
             @else
                 <p class="text-sm text-gray-400">No payload data.</p>
             @endif

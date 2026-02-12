@@ -14,7 +14,7 @@
 
     {{-- Search / Filter --}}
     <form method="GET" action="{{ route('event-lens.index') }}" class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
                 <label class="block text-xs font-semibold text-gray-700 mb-1">Event Name</label>
                 <input type="text" name="event" value="{{ request('event') }}" placeholder="App\Events\..."
@@ -23,6 +23,11 @@
             <div>
                 <label class="block text-xs font-semibold text-gray-700 mb-1">Correlation ID</label>
                 <input type="text" name="correlation" value="{{ request('correlation') }}" placeholder="uuid..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Payload Contains</label>
+                <input type="text" name="payload" value="{{ request('payload') }}" placeholder="search payload..."
                     class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
             </div>
             <div>
@@ -67,6 +72,16 @@
                                     <p class="text-xs text-gray-500">
                                         <span x-text="event.happened_at"></span> &middot; <span x-text="event.correlation_id"></span>
                                     </p>
+                                    <template x-if="event.payload_summary && Object.keys(event.payload_summary).length > 0">
+                                        <p class="text-xs text-gray-400 truncate">
+                                            <template x-for="(val, key, idx) in event.payload_summary" :key="key">
+                                                <span>
+                                                    <span x-show="idx > 0"> &middot; </span>
+                                                    <span x-text="key + ': ' + val"></span>
+                                                </span>
+                                            </template>
+                                        </p>
+                                    </template>
                                 </div>
                             </div>
                             <div class="text-right">
@@ -89,6 +104,7 @@
                                 <div>
                                     <p class="text-sm font-medium text-indigo-600 truncate">{{ $event->event_name }}</p>
                                     <p class="text-xs text-gray-500">{{ $event->happened_at->diffForHumans() }} &middot; {{ $event->correlation_id }}</p>
+                                    @include('event-lens::partials.payload-summary', ['payload' => $event->payload_summary])
                                 </div>
                             </div>
                             <div class="text-right">

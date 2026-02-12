@@ -57,6 +57,13 @@ class EventLogFactory extends Factory
         ]);
     }
 
+    public function withPayload(array $payload): static
+    {
+        return $this->state(fn () => [
+            'payload' => $payload,
+        ]);
+    }
+
     public function withSideEffects(int $queries = 0, int $mails = 0): static
     {
         return $this->state(fn () => [

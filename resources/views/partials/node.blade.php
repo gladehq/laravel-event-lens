@@ -32,6 +32,7 @@
                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700" title="{{ e($node->exception) }}">ERR</span>
                     @endif
                 </div>
+                @include('event-lens::partials.payload-summary', ['payload' => $node->payload_summary])
             </div>
         </div>
 

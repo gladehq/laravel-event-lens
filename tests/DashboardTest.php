@@ -85,6 +85,29 @@ it('can filter slow events only', function () {
         ->assertDontSee('App\Events\Fast');
 });
 
+it('can filter events by payload content', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App\Events\OrderPlaced', 'listener_name' => 'Closure', 'payload' => json_encode(['order_id' => 42, 'customer' => 'Alice']), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'App\Events\UserRegistered', 'listener_name' => 'Closure', 'payload' => json_encode(['user_id' => 99]), 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    get(route('event-lens.index', ['payload' => 'Alice']))
+        ->assertOk()
+        ->assertSee('OrderPlaced')
+        ->assertDontSee('UserRegistered');
+});
+
+it('shows payload summary on index page', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App\Events\OrderPlaced', 'listener_name' => 'Closure', 'payload' => json_encode(['order_id' => 42, 'status' => 'pending']), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    get(route('event-lens.index'))
+        ->assertOk()
+        ->assertSee('order_id: 42')
+        ->assertSee('status: pending');
+});
+
 // -- Statistics Page Tests --
 
 it('can view the statistics page', function () {
@@ -110,6 +133,31 @@ it('can view the event detail page', function () {
         ->assertViewIs('event-lens::detail')
         ->assertSee('evt-123')
         ->assertSee('42.5');
+});
+
+it('displays structured payload on detail page with array __context', function () {
+    EventLog::insert([
+        ['event_id' => 'evt-ctx', 'correlation_id' => 'cor-ctx', 'event_name' => 'App\Events\Test', 'listener_name' => 'Closure', 'payload' => json_encode(['order_id' => 1, '__context' => ['file' => 'OrderController.php', 'line' => 42]]), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    get(route('event-lens.detail', 'evt-ctx'))
+        ->assertOk()
+        ->assertSee('order_id')
+        ->assertSee('Triggered from:')
+        ->assertDontSee('__context');
+});
+
+it('displays structured payload on detail page', function () {
+    EventLog::insert([
+        ['event_id' => 'evt-structured', 'correlation_id' => 'cor-1', 'event_name' => 'App\Events\Test', 'listener_name' => 'Closure', 'payload' => json_encode(['status' => 'active', 'amount' => 99.5, 'items' => [1, 2, 3], 'meta' => ['foo' => 'bar']]), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    get(route('event-lens.detail', 'evt-structured'))
+        ->assertOk()
+        ->assertSee('active')
+        ->assertSee('99.5')
+        ->assertSee('Expand (3 items)')
+        ->assertSee('Expand (1 keys)');
 });
 
 it('returns 404 for non-existent event detail', function () {

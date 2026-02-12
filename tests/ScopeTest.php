@@ -112,6 +112,37 @@ it('has an index on execution_time_ms', function () {
     expect($found)->toBeTrue();
 });
 
+it('filters events by payload content', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'Order', 'listener_name' => 'Closure', 'payload' => json_encode(['order_id' => 42, 'customer' => 'Alice']), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'User', 'listener_name' => 'Closure', 'payload' => json_encode(['user_id' => 99]), 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::forPayload('Alice')->count())->toBe(1)
+        ->and(EventLog::forPayload('Alice')->first()->event_id)->toBe('e1');
+});
+
+it('returns all events when payload filter is null', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'A', 'listener_name' => 'Closure', 'payload' => json_encode(['key' => 'val']), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'B', 'listener_name' => 'Closure', 'payload' => json_encode(['key' => 'other']), 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::forPayload(null)->count())->toBe(2)
+        ->and(EventLog::forPayload('')->count())->toBe(2);
+});
+
+it('escapes LIKE wildcards in payload search', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'A', 'listener_name' => 'Closure', 'payload' => json_encode(['discount' => '50%']), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'B', 'listener_name' => 'Closure', 'payload' => json_encode(['amount' => 500]), 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    // Searching for literal "50%" should only match the event containing "50%"
+    expect(EventLog::forPayload('50%')->count())->toBe(1)
+        ->and(EventLog::forPayload('50%')->first()->event_id)->toBe('e1');
+});
+
 it('can create events using factory', function () {
     EventLog::factory()->count(3)->create();
 

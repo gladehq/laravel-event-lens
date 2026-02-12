@@ -20,6 +20,7 @@ class EventLensController extends Controller
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date',
             'slow' => 'nullable|boolean',
+            'payload' => 'nullable|string|max:255',
         ]);
 
         $slowThreshold = (float) config('event-lens.slow_threshold', 100.0);
@@ -27,6 +28,7 @@ class EventLensController extends Controller
         $events = EventLog::roots()
             ->forEvent($request->get('event'))
             ->forCorrelation($request->get('correlation'))
+            ->forPayload($request->get('payload'))
             ->betweenDates($request->get('start_date'), $request->get('end_date'))
             ->when($request->boolean('slow'), fn ($q) => $q->slow($slowThreshold))
             ->latest('happened_at')
