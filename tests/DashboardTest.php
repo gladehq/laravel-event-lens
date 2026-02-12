@@ -331,3 +331,172 @@ it('returns events after a given id', function () {
         ->assertOk()
         ->assertJsonCount(1, 'data');
 });
+
+// -- Error Propagation in Trace Tests --
+
+it('marks ancestor nodes with has_descendant_error when child has exception', function () {
+    $root = EventLog::factory()->root()->create([
+        'event_name' => 'App\Events\OrderPlaced',
+        'listener_name' => 'App\Listeners\ProcessOrder',
+        'correlation_id' => 'cor-err-tree',
+        'happened_at' => now(),
+    ]);
+
+    $child = EventLog::factory()->childOf($root)->create([
+        'event_name' => 'App\Events\PaymentCharged',
+        'listener_name' => 'App\Listeners\ChargePayment',
+        'happened_at' => now()->addMilliseconds(10),
+    ]);
+
+    EventLog::factory()->childOf($child)->withException('Payment gateway timeout')->create([
+        'event_name' => 'App\Events\GatewayCall',
+        'listener_name' => 'App\Listeners\CallGateway',
+        'happened_at' => now()->addMilliseconds(20),
+    ]);
+
+    get(route('event-lens.show', 'cor-err-tree'))
+        ->assertOk()
+        ->assertViewHas('totalErrors', 1)
+        ->assertSee('Contains error in descendants');
+});
+
+it('shows error and slow counts in waterfall header', function () {
+    $corId = 'cor-counts';
+    EventLog::factory()->root()->create([
+        'correlation_id' => $corId,
+        'execution_time_ms' => 5,
+        'happened_at' => now(),
+    ]);
+    EventLog::factory()->create([
+        'correlation_id' => $corId,
+        'parent_event_id' => 'non-null',
+        'execution_time_ms' => 500,
+        'happened_at' => now()->addMilliseconds(5),
+    ]);
+    EventLog::factory()->withException('fail')->create([
+        'correlation_id' => $corId,
+        'parent_event_id' => 'non-null-2',
+        'execution_time_ms' => 10,
+        'happened_at' => now()->addMilliseconds(10),
+    ]);
+
+    get(route('event-lens.show', $corId))
+        ->assertOk()
+        ->assertViewHas('totalErrors', 1)
+        ->assertViewHas('totalSlow', 1);
+});
+
+// -- Prev/Next Sibling Navigation Tests --
+
+it('shows prev and next sibling links on detail page', function () {
+    $corId = 'cor-siblings';
+    EventLog::insert([
+        ['event_id' => 'sib-1', 'correlation_id' => $corId, 'event_name' => 'App\Events\A', 'listener_name' => 'ListenerA', 'execution_time_ms' => 10, 'happened_at' => now()->subSeconds(3), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'sib-2', 'correlation_id' => $corId, 'event_name' => 'App\Events\B', 'listener_name' => 'ListenerB', 'execution_time_ms' => 10, 'happened_at' => now()->subSeconds(2), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'sib-3', 'correlation_id' => $corId, 'event_name' => 'App\Events\C', 'listener_name' => 'ListenerC', 'execution_time_ms' => 10, 'happened_at' => now()->subSeconds(1), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    // Middle sibling should have both prev and next
+    get(route('event-lens.detail', 'sib-2'))
+        ->assertOk()
+        ->assertSee('ListenerA')
+        ->assertSee('ListenerC');
+
+    // First sibling: no prev, has next
+    get(route('event-lens.detail', 'sib-1'))
+        ->assertOk()
+        ->assertSee('Previous')  // disabled "Previous" text
+        ->assertSee('ListenerB');
+
+    // Last sibling: has prev, no next
+    get(route('event-lens.detail', 'sib-3'))
+        ->assertOk()
+        ->assertSee('ListenerB')
+        ->assertSee('Next');  // disabled "Next" text
+});
+
+// -- Meaningful Detail Header Tests --
+
+it('shows listener name as heading and event name as subtitle on detail page', function () {
+    EventLog::insert([
+        ['event_id' => 'evt-header', 'correlation_id' => 'cor-header', 'event_name' => 'App\Events\OrderPlaced', 'listener_name' => 'App\Listeners\SendConfirmation', 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    get(route('event-lens.detail', 'evt-header'))
+        ->assertOk()
+        ->assertSee('App\Listeners\SendConfirmation')
+        ->assertSee('listening to');
+});
+
+// -- Model Changes Diff View Tests --
+
+it('renders diff table when model_changes has before/after structure', function () {
+    EventLog::insert([
+        [
+            'event_id' => 'evt-diff',
+            'correlation_id' => 'cor-diff',
+            'event_name' => 'App\Events\OrderUpdated',
+            'listener_name' => 'Closure',
+            'model_changes' => json_encode([
+                'before' => ['status' => 'pending', 'amount' => 100],
+                'after' => ['status' => 'shipped', 'amount' => 100],
+            ]),
+            'execution_time_ms' => 10,
+            'happened_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    ]);
+
+    get(route('event-lens.detail', 'evt-diff'))
+        ->assertOk()
+        ->assertSee('Old Value')
+        ->assertSee('New Value')
+        ->assertSee('pending')
+        ->assertSee('shipped')
+        ->assertSee('Show raw JSON');
+});
+
+it('falls back to raw JSON for non-standard model changes', function () {
+    EventLog::insert([
+        [
+            'event_id' => 'evt-raw',
+            'correlation_id' => 'cor-raw',
+            'event_name' => 'App\Events\OrderUpdated',
+            'listener_name' => 'Closure',
+            'model_changes' => json_encode(['status' => 'shipped']),
+            'execution_time_ms' => 10,
+            'happened_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    ]);
+
+    get(route('event-lens.detail', 'evt-raw'))
+        ->assertOk()
+        ->assertSee('shipped')
+        ->assertDontSee('Old Value');
+});
+
+// -- Expandable Exception Tests --
+
+it('renders expandable exception with summary and stack trace toggle', function () {
+    EventLog::insert([
+        [
+            'event_id' => 'evt-ex',
+            'correlation_id' => 'cor-ex',
+            'event_name' => 'App\Events\Failed',
+            'listener_name' => 'Closure',
+            'exception' => "RuntimeException: Something broke\n#0 /app/Foo.php(42): Bar->baz()\n#1 /app/Main.php(10): Foo->run()",
+            'execution_time_ms' => 10,
+            'happened_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    ]);
+
+    get(route('event-lens.detail', 'evt-ex'))
+        ->assertOk()
+        ->assertSee('RuntimeException: Something broke')
+        ->assertSee('Show stack trace');
+});

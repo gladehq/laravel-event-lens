@@ -9,6 +9,18 @@
                 <p class="text-sm text-gray-500 font-mono mt-1">{{ request()->route('correlationId') }}</p>
             </div>
             <div class="flex gap-6">
+                @if($totalErrors > 0)
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Errors</p>
+                        <p class="text-xl font-bold text-red-600">{{ $totalErrors }}</p>
+                    </div>
+                @endif
+                @if($totalSlow > 0)
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Slow (&gt;{{ $slowThreshold }}ms)</p>
+                        <p class="text-xl font-bold text-amber-600">{{ $totalSlow }}</p>
+                    </div>
+                @endif
                 <div class="text-right">
                     <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Total Duration</p>
                     <p class="text-xl font-bold text-gray-900">{{ number_format($totalDuration, 2) }} ms</p>
@@ -25,13 +37,29 @@
         </div>
     </div>
 
-    <div class="bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200">
-        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            <div class="w-1/2">Event / Listener</div>
-            <div class="w-1/4 text-right">Side Effects</div>
-            <div class="w-1/4 text-right">Duration</div>
+    <div x-data x-init="Alpine.store('traceView', { compact: false })" class="bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200">
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="flex text-xs font-semibold text-gray-500 uppercase tracking-wider gap-8">
+                    <div class="w-auto">Event / Listener</div>
+                </div>
+                @if($totalErrors > 0 && $firstErrorEventId)
+                    <a href="#error-{{ $firstErrorEventId }}" class="text-sm text-red-600 hover:text-red-800">&darr; Jump to error</a>
+                @endif
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Side Effects</div>
+                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Duration</div>
+                <button @click="$store.traceView.compact = !$store.traceView.compact"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-gray-300 text-gray-600 hover:bg-gray-100 transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                    <span x-text="$store.traceView?.compact ? 'Detailed view' : 'Compact view'"></span>
+                </button>
+            </div>
         </div>
-        
+
         <div class="divide-y divide-gray-200">
             @foreach($tree as $node)
                 @include('event-lens::partials.node', ['node' => $node, 'depth' => 0, 'totalDuration' => $totalDuration, 'slowThreshold' => $slowThreshold])

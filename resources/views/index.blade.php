@@ -188,8 +188,21 @@
                                             </span>
                                         </template>
                                     </div>
-                                    <p class="text-xs text-gray-500">
+                                    <p class="text-xs text-gray-400 truncate mt-0.5" x-text="event.listener_name"></p>
+                                    <p class="text-xs text-gray-500 flex items-center gap-1">
                                         <span x-text="event.happened_at_human"></span> &middot; <span x-text="event.correlation_id"></span>
+                                        <span x-data="{ copied: false }" class="inline-flex">
+                                            <button type="button"
+                                                @click.prevent.stop="navigator.clipboard.writeText(event.correlation_id); copied = true; setTimeout(() => copied = false, 1500)"
+                                                class="p-0.5 rounded text-gray-400 hover:text-gray-600" title="Copy Correlation ID">
+                                                <template x-if="!copied">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                                </template>
+                                                <template x-if="copied">
+                                                    <span class="text-[10px] font-medium text-green-600">&#10003;</span>
+                                                </template>
+                                            </button>
+                                        </span>
                                     </p>
                                     <template x-if="event.payload_summary && Object.keys(event.payload_summary).length > 0">
                                         <p class="text-xs text-gray-400 truncate">
@@ -234,7 +247,22 @@
                                         @endif
                                         @include('event-lens::partials.tags-badge', ['tags' => $event->tags])
                                     </div>
-                                    <p class="text-xs text-gray-500">{{ $event->happened_at->diffForHumans() }} &middot; {{ $event->correlation_id }}</p>
+                                    <p class="text-xs text-gray-400 truncate mt-0.5">{{ $event->listener_name }}</p>
+                                    <p class="text-xs text-gray-500 flex items-center gap-1">
+                                        {{ $event->happened_at->diffForHumans() }} &middot; {{ $event->correlation_id }}
+                                        <span x-data="{ copied: false }" class="inline-flex">
+                                            <button type="button"
+                                                @click.prevent.stop="navigator.clipboard.writeText('{{ $event->correlation_id }}'); copied = true; setTimeout(() => copied = false, 1500)"
+                                                class="p-0.5 rounded text-gray-400 hover:text-gray-600" title="Copy Correlation ID">
+                                                <template x-if="!copied">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                                </template>
+                                                <template x-if="copied">
+                                                    <span class="text-[10px] font-medium text-green-600">&#10003;</span>
+                                                </template>
+                                            </button>
+                                        </span>
+                                    </p>
                                     @include('event-lens::partials.payload-summary', ['payload' => $event->payload_summary])
                                 </div>
                             </div>

@@ -56,10 +56,19 @@ class EventLensController extends Controller
         $totalDuration = $events->sum('execution_time_ms');
         $totalQueries = $events->sum(fn ($e) => $e->side_effects['queries'] ?? 0);
         $totalMails = $events->sum(fn ($e) => $e->side_effects['mails'] ?? 0);
-        $tree = $this->buildTree($events);
         $slowThreshold = (float) config('event-lens.slow_threshold', 100.0);
 
-        return view('event-lens::waterfall', compact('tree', 'events', 'totalDuration', 'totalQueries', 'totalMails', 'slowThreshold'));
+        $totalErrors = $events->filter(fn ($e) => $e->exception !== null)->count();
+        $totalSlow = $events->filter(fn ($e) => $e->execution_time_ms > $slowThreshold)->count();
+        $firstErrorEventId = $events->firstWhere('exception', '!=', null)?->event_id;
+
+        $tree = $this->buildTree($events);
+        $tree = $this->markDescendantErrors($tree);
+
+        return view('event-lens::waterfall', compact(
+            'tree', 'events', 'totalDuration', 'totalQueries', 'totalMails',
+            'slowThreshold', 'totalErrors', 'totalSlow', 'firstErrorEventId',
+        ));
     }
 
     public function statistics(Request $request)
@@ -167,7 +176,15 @@ class EventLensController extends Controller
         $event = EventLog::where('event_id', $eventId)->firstOrFail();
         $slowThreshold = (float) config('event-lens.slow_threshold', 100.0);
 
-        return view('event-lens::detail', compact('event', 'slowThreshold'));
+        $siblings = EventLog::forCorrelation($event->correlation_id)
+            ->orderBy('happened_at')
+            ->get(['event_id', 'listener_name']);
+
+        $currentIndex = $siblings->search(fn ($e) => $e->event_id === $event->event_id);
+        $prevEvent = $currentIndex > 0 ? $siblings[$currentIndex - 1] : null;
+        $nextEvent = $currentIndex < $siblings->count() - 1 ? $siblings[$currentIndex + 1] : null;
+
+        return view('event-lens::detail', compact('event', 'slowThreshold', 'prevEvent', 'nextEvent'));
     }
 
     public function latest(Request $request)
@@ -198,5 +215,37 @@ class EventLensController extends Controller
         }
 
         return $branch;
+    }
+
+    protected function markDescendantErrors(array $nodes): array
+    {
+        foreach ($nodes as $node) {
+            if ($node->children && $node->children->count()) {
+                $this->markDescendantErrors($node->children->all());
+            }
+
+            $node->has_descendant_error = $this->hasDescendantError($node);
+        }
+
+        return $nodes;
+    }
+
+    protected function hasDescendantError($node): bool
+    {
+        if (! $node->children || $node->children->isEmpty()) {
+            return false;
+        }
+
+        foreach ($node->children as $child) {
+            if ($child->exception !== null) {
+                return true;
+            }
+
+            if ($this->hasDescendantError($child)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

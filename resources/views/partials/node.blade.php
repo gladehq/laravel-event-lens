@@ -1,7 +1,7 @@
 @php $hasChildren = $node->children && $node->children->count(); @endphp
 
-<div x-data="{ open: true }" class="hover:bg-gray-50 transition relative group">
-    <div class="px-6 py-4 flex items-center justify-between">
+<div x-data="{ open: true }" class="hover:bg-gray-50 transition relative group" @if($node->exception) id="error-{{ $node->event_id }}" @endif>
+    <div class="px-6 flex items-center justify-between" :class="$store.traceView?.compact ? 'py-1.5' : 'py-4'">
         <div class="w-1/2 flex items-center gap-3" style="padding-left: {{ $depth * 2 }}rem">
             @if($hasChildren)
                 <button @click="open = !open" class="text-gray-400 hover:text-gray-600 focus:outline-none">
@@ -31,9 +31,14 @@
                     @if($node->exception)
                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700" title="{{ e($node->exception) }}">ERR</span>
                     @endif
+                    @if(!$node->exception && ($node->has_descendant_error ?? false))
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-600 border border-amber-200" title="Contains error in descendants">&#9888;</span>
+                    @endif
                     @include('event-lens::partials.tags-badge', ['tags' => $node->tags])
                 </div>
-                @include('event-lens::partials.payload-summary', ['payload' => $node->payload_summary])
+                <div x-show="!$store.traceView?.compact">
+                    @include('event-lens::partials.payload-summary', ['payload' => $node->payload_summary])
+                </div>
             </div>
         </div>
 
@@ -55,11 +60,13 @@
                 {{ number_format($node->execution_time_ms, 2) }} ms
             </span>
             {{-- Duration bar relative to total --}}
-            @if(isset($totalDuration) && $totalDuration > 0)
-                <div class="mt-1 w-full bg-gray-100 rounded-full h-1.5">
-                    <div class="bg-indigo-500 h-1.5 rounded-full" style="width: {{ min(100, ($node->execution_time_ms / $totalDuration) * 100) }}%"></div>
-                </div>
-            @endif
+            <div x-show="!$store.traceView?.compact">
+                @if(isset($totalDuration) && $totalDuration > 0)
+                    <div class="mt-1 w-full bg-gray-100 rounded-full h-1.5">
+                        <div class="bg-indigo-500 h-1.5 rounded-full" style="width: {{ min(100, ($node->execution_time_ms / $totalDuration) * 100) }}%"></div>
+                    </div>
+                @endif
+            </div>
         </div>
     </div>
 

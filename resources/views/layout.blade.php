@@ -18,8 +18,10 @@
                 <span class="font-bold text-xl tracking-tight text-gray-900">EventLens</span>
             </a>
             <div class="flex items-center gap-6 text-sm font-medium">
-                <a href="{{ route('event-lens.index') }}" class="text-gray-600 hover:text-gray-900">Stream</a>
-                <a href="{{ route('event-lens.statistics') }}" class="text-gray-600 hover:text-gray-900">Statistics</a>
+                <a href="{{ route('event-lens.index') }}"
+                   class="{{ request()->routeIs('event-lens.index', 'event-lens.show', 'event-lens.detail') ? 'text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-900' }}">Stream</a>
+                <a href="{{ route('event-lens.statistics') }}"
+                   class="{{ request()->routeIs('event-lens.statistics') ? 'text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-900' }}">Statistics</a>
             </div>
         </div>
     </nav>

@@ -3,8 +3,36 @@
 @section('content')
     <div class="mb-6">
         <a href="{{ route('event-lens.show', $event->correlation_id) }}" class="text-sm text-gray-500 hover:text-gray-700 mb-2 inline-block">&larr; Back to Trace</a>
-        <h1 class="text-2xl font-bold text-gray-900">Event Detail</h1>
-        <p class="text-sm font-mono text-gray-500 mt-1">{{ $event->event_id }}</p>
+        <h1 class="text-2xl font-bold text-gray-900">{{ $event->listener_name }}</h1>
+        <p class="text-sm text-gray-500 mt-1">listening to <span class="font-mono">{{ $event->event_name }}</span></p>
+        <p class="text-xs font-mono text-gray-400 mt-1">{{ $event->event_id }}</p>
+
+        {{-- Prev/Next Sibling Navigation --}}
+        <div class="flex items-center gap-3 mt-3">
+            @if($prevEvent)
+                <a href="{{ route('event-lens.detail', $prevEvent->event_id) }}" class="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    {{ Str::limit($prevEvent->listener_name, 30) }}
+                </a>
+            @else
+                <span class="inline-flex items-center gap-1 text-sm text-gray-300 cursor-not-allowed">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    Previous
+                </span>
+            @endif
+            <span class="text-gray-400">&middot;</span>
+            @if($nextEvent)
+                <a href="{{ route('event-lens.detail', $nextEvent->event_id) }}" class="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800">
+                    {{ Str::limit($nextEvent->listener_name, 30) }}
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </a>
+            @else
+                <span class="inline-flex items-center gap-1 text-sm text-gray-300 cursor-not-allowed">
+                    Next
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </span>
+            @endif
+        </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -99,14 +127,23 @@
         </div>
     @endif
 
-    {{-- Exception --}}
+    {{-- Exception (Expandable) --}}
     @if($event->exception)
-        <div class="bg-red-50 border border-red-200 rounded-lg shadow-sm overflow-hidden mb-6">
+        @php
+            $exceptionParts = explode("\n", $event->exception, 2);
+            $exceptionSummary = $exceptionParts[0];
+            $exceptionTrace = $exceptionParts[1] ?? null;
+        @endphp
+        <div class="bg-red-50 border border-red-200 rounded-lg shadow-sm overflow-hidden mb-6" x-data="{ showTrace: false }">
             <div class="px-5 py-4 border-b border-red-200">
                 <h2 class="text-sm font-semibold text-red-700">Exception</h2>
             </div>
             <div class="p-5">
-                <pre class="text-xs font-mono text-red-800 bg-red-100 rounded-lg p-4 overflow-x-auto">{{ e($event->exception) }}</pre>
+                <p class="text-sm font-semibold text-red-800">{{ e($exceptionSummary) }}</p>
+                @if($exceptionTrace)
+                    <button @click="showTrace = !showTrace" class="mt-2 text-xs text-red-600 hover:text-red-800 underline" x-text="showTrace ? 'Hide stack trace' : 'Show stack trace'"></button>
+                    <pre x-show="showTrace" x-cloak class="text-xs font-mono text-red-700 bg-red-100 rounded-lg p-4 overflow-x-auto mt-2">{{ e($exceptionTrace) }}</pre>
+                @endif
             </div>
         </div>
     @endif
@@ -166,9 +203,13 @@
         </div>
     </div>
 
-    {{-- Model Changes --}}
+    {{-- Model Changes (Diff View) --}}
     @if(!empty($event->model_changes))
-        <div x-data="{ showChanges: true }" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+        @php
+            $hasDiffStructure = isset($event->model_changes['before']) && isset($event->model_changes['after'])
+                && is_array($event->model_changes['before']) && is_array($event->model_changes['after']);
+        @endphp
+        <div x-data="{ showChanges: true, showRawJson: false }" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
             <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between cursor-pointer" @click="showChanges = !showChanges">
                 <h2 class="text-sm font-semibold text-gray-700">Model Changes</h2>
                 <svg :class="showChanges ? 'rotate-180' : ''" class="w-4 h-4 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,7 +217,46 @@
                 </svg>
             </div>
             <div x-show="showChanges" x-cloak class="p-5">
-                <pre class="text-xs font-mono text-amber-800 bg-amber-50 rounded-lg p-4 overflow-x-auto max-h-96">{{ json_encode($event->model_changes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                @if($hasDiffStructure)
+                    <div x-show="!showRawJson">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-200">
+                                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Field</th>
+                                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Old Value</th>
+                                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">New Value</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                @php
+                                    $allFields = collect(array_keys($event->model_changes['before']))
+                                        ->merge(array_keys($event->model_changes['after']))
+                                        ->unique();
+                                @endphp
+                                @foreach($allFields as $field)
+                                    @php
+                                        $oldVal = $event->model_changes['before'][$field] ?? null;
+                                        $newVal = $event->model_changes['after'][$field] ?? null;
+                                        $changed = $oldVal !== $newVal;
+                                    @endphp
+                                    @if($changed)
+                                        <tr>
+                                            <td class="py-2 px-3 font-mono text-xs text-gray-700">{{ $field }}</td>
+                                            <td class="py-2 px-3 font-mono text-xs {{ $changed ? 'text-red-600 bg-red-50' : 'text-gray-600' }}">{{ is_null($oldVal) ? 'null' : (is_bool($oldVal) ? ($oldVal ? 'true' : 'false') : (is_array($oldVal) ? json_encode($oldVal) : $oldVal)) }}</td>
+                                            <td class="py-2 px-3 font-mono text-xs {{ $changed ? 'text-green-600 bg-green-50' : 'text-gray-600' }}">{{ is_null($newVal) ? 'null' : (is_bool($newVal) ? ($newVal ? 'true' : 'false') : (is_array($newVal) ? json_encode($newVal) : $newVal)) }}</td>
+                                        </tr>
+                                    @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <div x-show="showRawJson" x-cloak>
+                        <pre class="text-xs font-mono text-amber-800 bg-amber-50 rounded-lg p-4 overflow-x-auto max-h-96">{{ json_encode($event->model_changes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                    </div>
+                    <button @click="showRawJson = !showRawJson" class="mt-3 text-xs text-indigo-600 hover:text-indigo-800 underline" x-text="showRawJson ? 'Show diff table' : 'Show raw JSON'"></button>
+                @else
+                    <pre class="text-xs font-mono text-amber-800 bg-amber-50 rounded-lg p-4 overflow-x-auto max-h-96">{{ json_encode($event->model_changes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                @endif
             </div>
         </div>
     @endif
