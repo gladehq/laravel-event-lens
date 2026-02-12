@@ -62,10 +62,10 @@ All options live in `config/event-lens.php`:
 
 Visit `/event-lens` (or your configured path) to access:
 
-- **Stream** - Live event feed with filtering by event name, listener name, payload content, tag content, date range, slow-only and errors-only toggles. Each row shows inline badges for errors, query counts, mail counts and tags.
+- **Stream** - Live event feed with filtering by event name, listener name, payload content, tag content, date range, slow-only and errors-only toggles. Each row shows listener name, inline badges for errors, query counts, mail counts and tags, and a copy-to-clipboard button for correlation IDs.
 - **Statistics** - Tabbed dashboard organized into three views. Always-visible summary cards (total events, avg execution time, slow count, error rate, total queries, total mails) with quick date presets (Today, 7d, 30d). **Overview tab**: daily volume bar chart with error rate dots overlay, execution time distribution histogram (color-coded latency buckets), and event mix composition bar. **Performance tab**: top events by frequency with inline proportional bars and expandable per-listener breakdown, slowest individual events, and heaviest events by query load with inline bars. **Errors tab**: error breakdown grouped by exception type with count badge. All event names link to the stream page for drill-down. Tabs are bookmarkable via URL hash.
-- **Waterfall** - Per-correlation execution tree with timing bars, query/mail counts and error badges per node
-- **Detail** - Individual event inspection with payload (copy to clipboard), correlation ID (copy to clipboard), tags, side effects and exception data
+- **Waterfall** - Per-correlation execution tree with timing bars, query/mail counts, error and slow counts in the header, error propagation badges on ancestor nodes, "Jump to error" navigation, and a compact/detailed view toggle
+- **Detail** - Listener-focused header with event context, previous/next sibling navigation within the correlation, payload and correlation ID copy-to-clipboard, expandable exception with collapsible stack trace, model changes rendered as a before/after diff table, tags, and side effects
 
 ### Authorization
 
@@ -197,6 +197,10 @@ Views will be published to `resources/views/vendor/event-lens/`.
 | Per-listener performance breakdown | No | Yes (expandable in statistics) |
 | Execution time distribution | No | Yes (color-coded histogram) |
 | Event mix composition | No | Yes (stacked bar visualization) |
+| Error propagation in trace tree | No | Yes (ancestor warning badges) |
+| Sibling navigation in detail view | No | Yes (prev/next within correlation) |
+| Model changes diff view | No | Yes (before/after table) |
+| Compact trace view | No | Yes (toggle detailed/compact) |
 | Footprint | Heavy | Lightweight |
 
 ## License
