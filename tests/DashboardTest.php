@@ -900,3 +900,41 @@ it('hides replay button for non-root events', function () {
         ->assertOk()
         ->assertDontSee('Replay Event');
 });
+
+it('shows regressions tab on health page', function () {
+    get(route('event-lens.health'))
+        ->assertOk()
+        ->assertSee('Regressions')
+        ->assertSee('No performance regressions detected');
+});
+
+it('shows regression data when regressions exist', function () {
+    $listener = 'App\Listeners\SlowRegressed';
+    $event = 'App\Events\OrderPlaced';
+
+    // Baseline
+    for ($i = 0; $i < 5; $i++) {
+        EventLog::factory()->create([
+            'listener_name' => $listener,
+            'event_name' => $event,
+            'execution_time_ms' => 50,
+            'happened_at' => now()->subDays(3),
+        ]);
+    }
+
+    // Recent — 3x regression
+    for ($i = 0; $i < 5; $i++) {
+        EventLog::factory()->create([
+            'listener_name' => $listener,
+            'event_name' => $event,
+            'execution_time_ms' => 150,
+            'happened_at' => now()->subHours(6),
+        ]);
+    }
+
+    get(route('event-lens.health'))
+        ->assertOk()
+        ->assertSee('Regressions')
+        ->assertSee('Performance Regressions')
+        ->assertSee('App\Listeners\SlowRegressed');
+});

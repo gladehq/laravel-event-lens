@@ -42,11 +42,21 @@
                         role="tab" :aria-selected="activeTab === 'blast'">
                     Blast Radius
                 </button>
+                <button @click="activeTab = 'regressions'"
+                        :class="activeTab === 'regressions' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors"
+                        role="tab" :aria-selected="activeTab === 'regressions'">
+                    Regressions
+                    @if($regressions->isNotEmpty())
+                        <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">{{ $regressions->count() }}</span>
+                    @endif
+                </button>
             </nav>
         </div>
 
         {{-- Audit Tab --}}
         <div x-show="activeTab === 'audit'" x-cloak>
+            <p class="text-sm text-gray-500 mb-4">Detects dead listeners that are registered but never executed, orphan events dispatched without any listeners, and stale listeners that haven't run in over {{ config('event-lens.stale_threshold_days', 30) }} days.</p>
             <div class="space-y-6">
                 {{-- Dead Listeners --}}
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -146,6 +156,7 @@
 
         {{-- Listener Health Tab --}}
         <div x-show="activeTab === 'scores'" x-cloak>
+            <p class="text-sm text-gray-500 mb-4">Scores each listener from 0 to 100 based on error rate, P95 latency, and average query count. Lower scores indicate listeners that need attention.</p>
             <div class="space-y-6">
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -197,6 +208,7 @@
 
         {{-- SLA Compliance Tab --}}
         <div x-show="activeTab === 'sla'" x-cloak>
+            <p class="text-sm text-gray-500 mb-4">Tracks whether listeners and events are meeting the time budgets defined in your <code class="text-xs bg-gray-100 px-1 rounded">sla_budgets</code> config. Shows P95 actual latency against each budget over the last 7 days.</p>
             <div class="space-y-6">
                 @if($slaCompliance['total'] > 0)
                     {{-- Summary Cards --}}
@@ -273,6 +285,7 @@
 
         {{-- Blast Radius Tab --}}
         <div x-show="activeTab === 'blast'" x-cloak>
+            <p class="text-sm text-gray-500 mb-4">Maps how far a listener failure can propagate. Risk scores factor in average downstream children, error rate, and execution time to highlight listeners where a single failure could cascade.</p>
             <div class="space-y-6">
                 @if($blastRadius->isNotEmpty())
                     <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -347,6 +360,68 @@
                         </div>
                         <p class="text-sm text-gray-500">No blast radius data available.</p>
                         <p class="text-xs text-gray-400 mt-1">Blast radius analysis requires recorded listener executions.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Regressions Tab --}}
+        <div x-show="activeTab === 'regressions'" x-cloak>
+            <p class="text-sm text-gray-500 mb-4">Compares each listener's recent performance (last 24h) against its baseline (previous 7 days). Flags listeners where the recent average exceeds the baseline by {{ config('event-lens.regression_threshold', 2.0) }}x or more.</p>
+            <div class="space-y-6">
+                @if($regressions->isNotEmpty())
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+                            <h2 class="text-sm font-semibold text-gray-700">Performance Regressions</h2>
+                            <div class="flex items-center gap-4 text-xs text-gray-500">
+                                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span> Critical (5x+)</span>
+                                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500"></span> Warning ({{ config('event-lens.regression_threshold', 2.0) }}x+)</span>
+                            </div>
+                        </div>
+                        <table class="w-full">
+                            <thead>
+                                <tr class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    <th class="px-5 py-3 text-left">Listener</th>
+                                    <th class="px-5 py-3 text-right">Baseline Avg</th>
+                                    <th class="px-5 py-3 text-right">Recent Avg</th>
+                                    <th class="px-5 py-3 text-right">Change</th>
+                                    <th class="px-5 py-3 text-right">Severity</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                @foreach($regressions as $regression)
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-5 py-3 text-sm">
+                                            <a href="{{ route('event-lens.index', ['listener' => $regression->listener_name]) }}" class="font-mono text-indigo-600 hover:underline">{{ $regression->listener_name }}</a>
+                                            <p class="text-xs text-gray-400 font-mono">{{ $regression->event_name }}</p>
+                                        </td>
+                                        <td class="px-5 py-3 text-sm text-gray-900 text-right">{{ number_format($regression->baseline_avg_ms, 2) }} ms</td>
+                                        <td class="px-5 py-3 text-sm text-right font-semibold {{ $regression->severity === 'critical' ? 'text-red-600' : 'text-yellow-600' }}">
+                                            {{ number_format($regression->recent_avg_ms, 2) }} ms
+                                        </td>
+                                        <td class="px-5 py-3 text-sm text-right font-semibold text-red-600">
+                                            +{{ $regression->change_pct }}%
+                                        </td>
+                                        <td class="px-5 py-3 text-right">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold
+                                                {{ $regression->severity === 'critical' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700' }}">
+                                                {{ ucfirst($regression->severity) }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-4">
+                            <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </div>
+                        <p class="text-sm text-gray-500">No performance regressions detected.</p>
+                        <p class="text-xs text-gray-400 mt-1">Listeners are performing within normal range compared to their 7-day baseline.</p>
                     </div>
                 @endif
             </div>
