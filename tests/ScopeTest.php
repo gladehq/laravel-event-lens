@@ -39,6 +39,16 @@ it('scopes by event name with like match', function () {
         ->and(EventLog::forEvent(null)->count())->toBe(2);
 });
 
+it('matches fully-qualified event name with backslashes', function () {
+    EventLog::insert([
+        ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App\Events\OrderPlaced', 'listener_name' => 'Closure', 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'e2', 'correlation_id' => 'c2', 'event_name' => 'App\Events\UserRegistered', 'listener_name' => 'Closure', 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::forEvent('App\Events\OrderPlaced')->count())->toBe(1)
+        ->and(EventLog::forEvent('App\Events\OrderPlaced')->first()->event_id)->toBe('e1');
+});
+
 it('escapes LIKE wildcards in event name search', function () {
     EventLog::insert([
         ['event_id' => 'e1', 'correlation_id' => 'c1', 'event_name' => 'App%Events', 'listener_name' => 'Closure', 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
@@ -215,6 +225,20 @@ it('scopes by listener name with like match', function () {
 
     expect(EventLog::forListener('SendEmail')->count())->toBe(1)
         ->and(EventLog::forListener(null)->count())->toBe(2);
+});
+
+it('matches fully-qualified listener name with backslashes', function () {
+    EventLog::insert([
+        ['event_id' => 'root', 'correlation_id' => 'c1', 'parent_event_id' => null, 'event_name' => 'App\Events\Order', 'listener_name' => 'Event::dispatch', 'execution_time_ms' => 50, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'child', 'correlation_id' => 'c1', 'parent_event_id' => 'root', 'event_name' => 'App\Events\Order', 'listener_name' => 'App\Listeners\SendEmail', 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'root2', 'correlation_id' => 'c2', 'parent_event_id' => null, 'event_name' => 'App\Events\User', 'listener_name' => 'Event::dispatch', 'execution_time_ms' => 30, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'child2', 'correlation_id' => 'c2', 'parent_event_id' => 'root2', 'event_name' => 'App\Events\User', 'listener_name' => 'App\Listeners\UpdateInventory', 'execution_time_ms' => 5, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    // Searching by fully-qualified listener name on roots should match via child subquery
+    $results = EventLog::roots()->forListener('App\Listeners\SendEmail')->get();
+    expect($results)->toHaveCount(1)
+        ->and($results->first()->event_id)->toBe('root');
 });
 
 it('escapes LIKE wildcards in listener name search', function () {

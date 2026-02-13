@@ -126,7 +126,7 @@ class EventLog extends Model
     public function scopeForEvent(Builder $query, ?string $eventName): Builder
     {
         return $query->when($eventName, function ($q) use ($eventName) {
-            $escaped = str_replace(['%', '_'], ['\%', '\_'], $eventName);
+            $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $eventName);
 
             return $q->whereRaw("event_name LIKE ? ESCAPE '\\'", ["%{$escaped}%"]);
         });
@@ -147,7 +147,7 @@ class EventLog extends Model
     public function scopeForPayload(Builder $query, ?string $term): Builder
     {
         return $query->when($term, function ($q) use ($term) {
-            $escaped = str_replace(['%', '_'], ['\%', '\_'], $term);
+            $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term);
 
             return $q->whereRaw("payload LIKE ? ESCAPE '\\'", ["%{$escaped}%"]);
         });
@@ -156,7 +156,7 @@ class EventLog extends Model
     public function scopeForTag(Builder $query, ?string $term): Builder
     {
         return $query->when($term, function ($q) use ($term) {
-            $escaped = str_replace(['%', '_'], ['\%', '\_'], $term);
+            $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term);
 
             return $q->whereRaw("tags LIKE ? ESCAPE '\\'", ["%{$escaped}%"]);
         });
@@ -190,7 +190,7 @@ class EventLog extends Model
     public function scopeForListener(Builder $query, ?string $listener): Builder
     {
         return $query->when($listener, function ($q) use ($listener) {
-            $escaped = str_replace(['%', '_'], ['\%', '\_'], $listener);
+            $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $listener);
 
             // When filtering roots, match correlations that contain a child with the listener name
             return $q->where(function ($q) use ($escaped) {
