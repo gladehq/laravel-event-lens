@@ -500,3 +500,171 @@ it('renders expandable exception with summary and stack trace toggle', function 
         ->assertSee('RuntimeException: Something broke')
         ->assertSee('Show stack trace');
 });
+
+// -- Health Page Tests --
+
+it('can view the health page', function () {
+    get(route('event-lens.health'))
+        ->assertOk()
+        ->assertViewIs('event-lens::health')
+        ->assertSee('Health')
+        ->assertSee('Audit')
+        ->assertSee('Listener Health');
+});
+
+it('shows dead listeners on audit tab', function () {
+    // Create a root dispatch with no child listener records — this alone
+    // does NOT produce a "dead listener" unless the dispatcher has a
+    // registered listener. The AuditService checks against the dispatcher.
+    // For testing, we verify the page renders the audit section properly.
+    EventLog::factory()->root()->create([
+        'event_name' => 'App\Events\NeverListened',
+        'listener_name' => 'Event::dispatch',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.health'))
+        ->assertOk()
+        ->assertSee('Dead Listeners');
+});
+
+it('shows orphan events on audit tab', function () {
+    EventLog::factory()->root()->create([
+        'event_name' => 'App\Events\Orphaned',
+        'listener_name' => 'Event::dispatch',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.health'))
+        ->assertOk()
+        ->assertSee('Orphan Events')
+        ->assertSee('App\Events\Orphaned');
+});
+
+it('shows stale listeners on audit tab', function () {
+    EventLog::factory()->create([
+        'event_name' => 'App\Events\OldEvent',
+        'listener_name' => 'App\Listeners\StaleHandler',
+        'parent_event_id' => 'some-parent',
+        'happened_at' => now()->subDays(60),
+    ]);
+
+    get(route('event-lens.health'))
+        ->assertOk()
+        ->assertSee('Stale Listeners')
+        ->assertSee('App\Listeners\StaleHandler');
+});
+
+it('shows listener health scores', function () {
+    EventLog::factory()->count(3)->create([
+        'event_name' => 'App\Events\HealthTest',
+        'listener_name' => 'App\Listeners\HealthyListener',
+        'parent_event_id' => 'some-parent',
+        'execution_time_ms' => 10,
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.health'))
+        ->assertOk()
+        ->assertSee('Listener Health Scores')
+        ->assertSee('App\Listeners\HealthyListener');
+});
+
+// -- Storm Badge Tests --
+
+it('shows storm badge on stream for storm events', function () {
+    EventLog::factory()->root()->storm()->create([
+        'event_name' => 'App\Events\StormEvent',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.index'))
+        ->assertOk()
+        ->assertSee('STORM');
+});
+
+it('does not show storm badge for non-storm events', function () {
+    EventLog::factory()->root()->create([
+        'event_name' => 'App\Events\NormalEvent',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.index'))
+        ->assertOk()
+        ->assertDontSee('bg-red-600 text-white">STORM');
+});
+
+// -- Request Context Badge Tests --
+
+it('shows request context badge on stream for root events', function () {
+    EventLog::factory()->root()->withRequestContext('http', '/api/orders')->create([
+        'event_name' => 'App\Events\OrderPlaced',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.index'))
+        ->assertOk()
+        ->assertSee('GET /api/orders');
+});
+
+// -- Storm Filter Tests --
+
+it('filters stream by storm events only', function () {
+    EventLog::factory()->root()->storm()->create([
+        'event_name' => 'App\Events\StormEvent',
+        'happened_at' => now(),
+    ]);
+    EventLog::factory()->root()->create([
+        'event_name' => 'App\Events\NormalEvent',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.index', ['storm' => '1']))
+        ->assertOk()
+        ->assertSee('StormEvent')
+        ->assertDontSee('App\Events\NormalEvent');
+});
+
+// -- Storm Metadata on Detail Page --
+
+it('shows storm metadata on detail page', function () {
+    EventLog::factory()->root()->storm()->create([
+        'event_id' => 'evt-storm-detail',
+        'event_name' => 'App\Events\StormEvent',
+        'side_effects' => ['queries' => 0, 'mails' => 0, 'storm_count' => 75],
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.detail', 'evt-storm-detail'))
+        ->assertOk()
+        ->assertSee('Part of storm')
+        ->assertSee('75 events');
+});
+
+// -- Request Context on Detail Page --
+
+it('shows request context on detail page', function () {
+    EventLog::factory()->root()->withRequestContext('http', '/api/orders')->create([
+        'event_id' => 'evt-ctx-detail',
+        'event_name' => 'App\Events\OrderPlaced',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.detail', 'evt-ctx-detail'))
+        ->assertOk()
+        ->assertSee('Trigger Context')
+        ->assertSee('GET /api/orders');
+});
+
+// -- Storm Count on Statistics --
+
+it('shows storm count card on statistics overview', function () {
+    EventLog::factory()->root()->storm()->create(['happened_at' => now()]);
+    EventLog::factory()->root()->storm()->create(['happened_at' => now()]);
+    EventLog::factory()->root()->create(['happened_at' => now()]);
+
+    get(route('event-lens.statistics'))
+        ->assertOk()
+        ->assertSee('Storm Events')
+        ->assertSee('2');
+});

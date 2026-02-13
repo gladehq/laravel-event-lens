@@ -35,6 +35,7 @@
                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-600 border border-amber-200" title="Contains error in descendants">&#9888;</span>
                     @endif
                     @include('event-lens::partials.tags-badge', ['tags' => $node->tags])
+                    @include('event-lens::partials.storm-badge', ['isStorm' => $node->is_storm])
                 </div>
                 <div x-show="!$store.traceView?.compact">
                     @include('event-lens::partials.payload-summary', ['payload' => $node->payload_summary])

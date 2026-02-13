@@ -9,6 +9,8 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Cache;
 use GladeHQ\LaravelEventLens\Models\EventLog;
 use GladeHQ\LaravelEventLens\Http\Resources\EventLogResource;
+use GladeHQ\LaravelEventLens\Services\AuditService;
+use GladeHQ\LaravelEventLens\Services\ListenerHealthService;
 
 class EventLensController extends Controller
 {
@@ -112,6 +114,7 @@ class EventLensController extends Controller
                     2
                 ),
                 'slow_count' => EventLog::roots()->betweenDates($startDate, $endDate)->slow($slowThreshold)->count(),
+                'storm_count' => EventLog::roots()->betweenDates($startDate, $endDate)->storms()->count(),
                 'total_queries' => (int) EventLog::roots()->betweenDates($startDate, $endDate)
                     ->selectRaw("SUM({$queriesExpr}) as total")->value('total'),
                 'total_mails' => (int) EventLog::roots()->betweenDates($startDate, $endDate)
@@ -171,6 +174,29 @@ class EventLensController extends Controller
         });
 
         return view('event-lens::statistics', compact('stats', 'startDate', 'endDate', 'slowThreshold'));
+    }
+
+    public function health(Request $request)
+    {
+        $slowThreshold = (float) config('event-lens.slow_threshold', 100.0);
+
+        $version = Cache::get('event-lens:cache-version', 0);
+        $cacheKey = "event-lens:health:v{$version}";
+
+        $audit = Cache::remember($cacheKey, 300, function () {
+            $auditService = app(AuditService::class);
+
+            return [
+                'dead_listeners' => $auditService->deadListeners(),
+                'orphan_events' => $auditService->orphanEvents(),
+                'stale_listeners' => $auditService->staleListeners(),
+            ];
+        });
+
+        $healthService = app(ListenerHealthService::class);
+        $healthScores = $healthService->scores();
+
+        return view('event-lens::health', compact('audit', 'healthScores', 'slowThreshold'));
     }
 
     public function detail(string $eventId)

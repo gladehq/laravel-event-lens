@@ -114,6 +114,11 @@
                     class="rounded border-gray-300 text-red-600 focus:ring-red-500">
                 <span class="text-sm text-gray-700">Errors only</span>
             </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" name="storm" value="1" {{ request('storm') ? 'checked' : '' }}
+                    class="rounded border-gray-300 text-red-600 focus:ring-red-500">
+                <span class="text-sm text-gray-700">Storm events only</span>
+            </label>
             <div class="flex-1"></div>
             <a href="{{ route('event-lens.index') }}" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Clear</a>
             <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700">
@@ -187,6 +192,16 @@
                                                 </div>
                                             </span>
                                         </template>
+                                        <template x-if="event.is_storm">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-red-600 text-white">STORM</span>
+                                        </template>
+                                        <template x-if="event.request_context">
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                                                <template x-if="event.request_context.type === 'http'"><span x-text="event.request_context.method + ' ' + event.request_context.path"></span></template>
+                                                <template x-if="event.request_context.type === 'cli'"><span x-text="'artisan ' + (event.request_context.command || '')"></span></template>
+                                                <template x-if="event.request_context.type === 'queue'"><span x-text="'Queue: ' + (event.request_context.job || '')"></span></template>
+                                            </span>
+                                        </template>
                                     </div>
                                     <p class="text-xs text-gray-400 truncate mt-0.5" x-text="event.listener_name"></p>
                                     <p class="text-xs text-gray-500 flex items-center gap-1">
@@ -246,6 +261,8 @@
                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">{{ $event->side_effects['mails'] }}m</span>
                                         @endif
                                         @include('event-lens::partials.tags-badge', ['tags' => $event->tags])
+                                        @include('event-lens::partials.storm-badge', ['isStorm' => $event->is_storm])
+                                        @include('event-lens::partials.context-badge', ['context' => $event->payload['__request_context'] ?? null])
                                     </div>
                                     <p class="text-xs text-gray-400 truncate mt-0.5">{{ $event->listener_name }}</p>
                                     <p class="text-xs text-gray-500 flex items-center gap-1">

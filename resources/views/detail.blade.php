@@ -91,6 +91,32 @@
                     <dt class="text-sm text-gray-500">Happened At</dt>
                     <dd class="text-sm text-gray-900">{{ $event->happened_at->format('Y-m-d H:i:s.u') }}</dd>
                 </div>
+                @if($event->is_storm)
+                    <div class="px-5 py-3 flex justify-between">
+                        <dt class="text-sm text-gray-500">Storm</dt>
+                        <dd class="text-sm font-semibold text-red-600">
+                            Part of storm ({{ $event->side_effects['storm_count'] ?? '?' }} events)
+                        </dd>
+                    </div>
+                @endif
+                @if($event->payload['__request_context'] ?? null)
+                    @php $detailContext = $event->payload['__request_context']; @endphp
+                    <div class="px-5 py-3 flex justify-between">
+                        <dt class="text-sm text-gray-500">Trigger Context</dt>
+                        <dd class="text-sm text-gray-900">
+                            @if(($detailContext['type'] ?? '') === 'http')
+                                {{ $detailContext['method'] ?? '' }} {{ $detailContext['path'] ?? '' }}
+                                @if($detailContext['user_id'] ?? null)
+                                    <span class="text-gray-500">(User #{{ $detailContext['user_id'] }})</span>
+                                @endif
+                            @elseif(($detailContext['type'] ?? '') === 'cli')
+                                artisan {{ $detailContext['command'] ?? '' }}
+                            @elseif(($detailContext['type'] ?? '') === 'queue')
+                                Queue: {{ $detailContext['job'] ?? '' }}
+                            @endif
+                        </dd>
+                    </div>
+                @endif
             </dl>
         </div>
 

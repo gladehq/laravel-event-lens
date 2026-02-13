@@ -22,6 +22,8 @@
                    class="{{ request()->routeIs('event-lens.index', 'event-lens.show', 'event-lens.detail') ? 'text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-900' }}">Stream</a>
                 <a href="{{ route('event-lens.statistics') }}"
                    class="{{ request()->routeIs('event-lens.statistics') ? 'text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-900' }}">Statistics</a>
+                <a href="{{ route('event-lens.health') }}"
+                   class="{{ request()->routeIs('event-lens.health') ? 'text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-900' }}">Health</a>
             </div>
         </div>
     </nav>

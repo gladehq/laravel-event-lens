@@ -8,6 +8,10 @@
                 <h1 class="text-2xl font-bold text-gray-900">Event Trace</h1>
                 <p class="text-sm text-gray-500 font-mono mt-1">{{ request()->route('correlationId') }}</p>
             </div>
+            @php
+                $rootEvent = $events->first(fn ($e) => $e->parent_event_id === null) ?? $events->first();
+                $requestContext = $rootEvent?->payload['__request_context'] ?? null;
+            @endphp
             <div class="flex gap-6">
                 @if($totalErrors > 0)
                     <div class="text-right">
@@ -36,6 +40,23 @@
             </div>
         </div>
     </div>
+
+    @if($requestContext)
+        <div class="mb-4 bg-purple-50 border border-purple-200 rounded-lg px-5 py-3 flex items-center gap-2">
+            <span class="text-sm font-medium text-purple-700">
+                @if(($requestContext['type'] ?? '') === 'http')
+                    {{ $requestContext['method'] ?? '' }} {{ $requestContext['path'] ?? '' }}
+                    @if($requestContext['user_id'] ?? null)
+                        <span class="text-purple-500">(User #{{ $requestContext['user_id'] }})</span>
+                    @endif
+                @elseif(($requestContext['type'] ?? '') === 'cli')
+                    artisan {{ $requestContext['command'] ?? '' }}
+                @elseif(($requestContext['type'] ?? '') === 'queue')
+                    Queue: {{ $requestContext['job'] ?? '' }}
+                @endif
+            </span>
+        </div>
+    @endif
 
     <div x-data x-init="Alpine.store('traceView', { compact: false })" class="bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200">
         <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
