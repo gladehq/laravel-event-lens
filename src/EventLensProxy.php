@@ -194,4 +194,15 @@ class EventLensProxy implements DispatcherContract
         }
         return (string) $event;
     }
+
+    /**
+     * Delegate any non-interface method calls to the original dispatcher.
+     *
+     * Packages like Telescope call concrete Dispatcher methods (e.g. getListeners())
+     * that aren't part of the DispatcherContract interface.
+     */
+    public function __call(string $method, array $parameters): mixed
+    {
+        return $this->original->{$method}(...$parameters);
+    }
 }
