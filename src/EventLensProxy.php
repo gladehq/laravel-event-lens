@@ -175,7 +175,7 @@ class EventLensProxy implements DispatcherContract
     protected function resolveListenerName($listener): string
     {
         if (is_string($listener)) {
-            return $listener;
+            return str_ends_with($listener, '@handle') ? substr($listener, 0, -7) : $listener;
         }
         if ($listener instanceof Closure) {
             return 'Closure';
