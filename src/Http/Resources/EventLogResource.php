@@ -26,6 +26,8 @@ class EventLogResource extends JsonResource
             'payload_summary' => $this->payload_summary,
             'has_error' => $this->exception !== null,
             'is_storm' => (bool) $this->is_storm,
+            'is_sla_breach' => (bool) $this->is_sla_breach,
+            'has_drift' => (bool) $this->has_drift,
             'request_context' => $this->payload['__request_context'] ?? null,
             'tags' => $this->tags,
             'url' => route('event-lens.show', $this->correlation_id),

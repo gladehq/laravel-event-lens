@@ -19,16 +19,27 @@ class EventRecorder
     protected EventLensBuffer $buffer;
     protected EventCollector $collector;
     protected RequestContextResolver $contextResolver;
+    protected SlaChecker $slaChecker;
+    protected SchemaTracker $schemaTracker;
     protected ?float $samplingRate = null;
     protected ?bool $captureBacktrace = null;
     protected ?int $stormThreshold = null;
+    protected bool $detectingDrift = false;
 
-    public function __construct(WatcherManager $watcher, EventLensBuffer $buffer, EventCollector $collector, RequestContextResolver $contextResolver)
-    {
+    public function __construct(
+        WatcherManager $watcher,
+        EventLensBuffer $buffer,
+        EventCollector $collector,
+        RequestContextResolver $contextResolver,
+        SlaChecker $slaChecker,
+        SchemaTracker $schemaTracker,
+    ) {
         $this->watcher = $watcher;
         $this->buffer = $buffer;
         $this->collector = $collector;
         $this->contextResolver = $contextResolver;
+        $this->slaChecker = $slaChecker;
+        $this->schemaTracker = $schemaTracker;
     }
 
     public function capture(string $eventName, string $listenerName, $eventPayload, Closure $callback)
@@ -171,6 +182,28 @@ class EventRecorder
 
             if ($tags !== null) {
                 $record['tags'] = $tags;
+            }
+
+            // SLA breach detection
+            $slaBreach = $this->slaChecker->check($eventName, $listenerName, $duration);
+            if ($slaBreach !== null) {
+                $record['is_sla_breach'] = true;
+                $sideEffects['sla_breach'] = $slaBreach;
+                $record['side_effects'] = $sideEffects;
+            }
+
+            // Schema drift detection (root events only, with re-entrancy guard)
+            if ($parentEventId === null && is_array($collectedPayload) && ! $this->detectingDrift) {
+                $this->detectingDrift = true;
+                try {
+                    $drift = $this->schemaTracker->detectDrift($eventName, $collectedPayload);
+                    if ($drift !== null) {
+                        $record['has_drift'] = true;
+                        $record['drift_details'] = $drift;
+                    }
+                } finally {
+                    $this->detectingDrift = false;
+                }
             }
 
             $this->buffer->push($record);

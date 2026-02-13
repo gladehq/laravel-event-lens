@@ -179,4 +179,20 @@ return [
     |
     */
     'stale_threshold_days' => 30,
+
+    /*
+    |--------------------------------------------------------------------------
+    | SLA Time Budgets (ms)
+    |--------------------------------------------------------------------------
+    |
+    | Define maximum execution time budgets per event or listener class.
+    | Exact listener names are checked first, then exact event names,
+    | then wildcard patterns. Wildcards use Str::is() syntax.
+    |
+    */
+    'sla_budgets' => [
+        // 'App\Events\OrderPlaced' => 200,
+        // 'App\Listeners\SendEmail' => 500,
+        // 'App\Events\*' => 1000,
+    ],
 ];

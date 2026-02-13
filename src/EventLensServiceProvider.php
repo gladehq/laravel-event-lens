@@ -39,6 +39,8 @@ class EventLensServiceProvider extends ServiceProvider
 
         $this->app->singleton(Collectors\EventCollector::class);
         $this->app->singleton(Services\RequestContextResolver::class);
+        $this->app->singleton(Services\SlaChecker::class);
+        $this->app->singleton(Services\SchemaTracker::class);
         $this->app->singleton(Services\EventRecorder::class);
         $this->app->singleton(Services\AuditService::class);
         $this->app->singleton(Services\ListenerHealthService::class);

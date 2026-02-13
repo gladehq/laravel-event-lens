@@ -85,6 +85,21 @@ class EventLogFactory extends Factory
         ]);
     }
 
+    public function slaBreach(): static
+    {
+        return $this->state(fn () => [
+            'is_sla_breach' => true,
+        ]);
+    }
+
+    public function withDrift(array $details = []): static
+    {
+        return $this->state(fn () => [
+            'has_drift' => true,
+            'drift_details' => $details,
+        ]);
+    }
+
     public function withRequestContext(string $type, string $detail): static
     {
         return $this->state(function (array $attributes) use ($type, $detail) {

@@ -226,3 +226,23 @@ it('escapes LIKE wildcards in listener name search', function () {
     expect(EventLog::forListener('App%Listeners')->count())->toBe(1)
         ->and(EventLog::forListener('App%Listeners')->first()->event_id)->toBe('e1');
 });
+
+it('scopes to SLA breach events', function () {
+    EventLog::insert([
+        ['event_id' => 'ok', 'correlation_id' => 'c1', 'event_name' => 'App\Events\Fast', 'listener_name' => 'Closure', 'is_sla_breach' => false, 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'breach', 'correlation_id' => 'c2', 'event_name' => 'App\Events\Slow', 'listener_name' => 'Closure', 'is_sla_breach' => true, 'execution_time_ms' => 500, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::slaBreaches()->count())->toBe(1)
+        ->and(EventLog::slaBreaches()->first()->event_id)->toBe('breach');
+});
+
+it('scopes to events with drift', function () {
+    EventLog::insert([
+        ['event_id' => 'stable', 'correlation_id' => 'c1', 'event_name' => 'App\Events\Stable', 'listener_name' => 'Closure', 'has_drift' => false, 'drift_details' => null, 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'drifted', 'correlation_id' => 'c2', 'event_name' => 'App\Events\Drifted', 'listener_name' => 'Closure', 'has_drift' => true, 'drift_details' => json_encode(['changes' => ['Added key: discount']]), 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::withDrift()->count())->toBe(1)
+        ->and(EventLog::withDrift()->first()->event_id)->toBe('drifted');
+});

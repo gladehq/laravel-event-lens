@@ -26,6 +26,9 @@ use Illuminate\Support\Str;
  * @property int|null $model_id
  * @property array|null $tags
  * @property bool $is_storm
+ * @property bool $is_sla_breach
+ * @property bool $has_drift
+ * @property array|null $drift_details
  * @property float $execution_time_ms
  * @property \Illuminate\Support\Carbon $happened_at
  * @property \Illuminate\Support\Carbon $created_at
@@ -46,6 +49,9 @@ class EventLog extends Model
         'model_changes' => 'array',
         'tags' => 'array',
         'is_storm' => 'boolean',
+        'is_sla_breach' => 'boolean',
+        'has_drift' => 'boolean',
+        'drift_details' => 'array',
         'happened_at' => 'datetime',
     ];
 
@@ -157,6 +163,16 @@ class EventLog extends Model
     public function scopeStorms(Builder $query): Builder
     {
         return $query->where('is_storm', true);
+    }
+
+    public function scopeSlaBreaches(Builder $query): Builder
+    {
+        return $query->where('is_sla_breach', true);
+    }
+
+    public function scopeWithDrift(Builder $query): Builder
+    {
+        return $query->where('has_drift', true);
     }
 
     public function scopeWithErrors(Builder $query): Builder
