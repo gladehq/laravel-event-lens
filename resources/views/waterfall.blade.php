@@ -11,7 +11,39 @@
             @php
                 $rootEvent = $events->first(fn ($e) => $e->parent_event_id === null) ?? $events->first();
                 $requestContext = $rootEvent?->payload['__request_context'] ?? null;
+                $otlpEnabled = !empty(config('event-lens.otlp_endpoint'));
             @endphp
+            <div class="flex items-start gap-4">
+                @if($otlpEnabled)
+                    <div x-data="{ confirmExport: false }" class="shrink-0">
+                        <button @click="confirmExport = true"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                            Export Trace
+                        </button>
+                        <div x-show="confirmExport" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="confirmExport = false">
+                            <div class="bg-white rounded-lg shadow-xl border border-gray-200 p-6 max-w-md mx-4">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2">Export this trace?</h3>
+                                <p class="text-sm text-gray-600 mb-1">This will send {{ $events->count() }} spans to your configured OTLP endpoint.</p>
+                                <p class="text-xs text-gray-400 mb-4">{{ config('event-lens.otlp_endpoint') }}</p>
+                                <div class="flex justify-end gap-3">
+                                    <button @click="confirmExport = false" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+                                    <form method="POST" action="{{ route('event-lens.export', request()->route('correlationId')) }}">
+                                        @csrf
+                                        <button type="submit" class="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Export</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            </div>
+            @if(session('export_success'))
+                <div class="mt-3 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-2 rounded-lg">{{ session('export_success') }}</div>
+            @endif
+            @if(session('export_error'))
+                <div class="mt-3 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-lg">{{ session('export_error') }}</div>
+            @endif
             <div class="flex gap-6">
                 @if($totalErrors > 0)
                     <div class="text-right">

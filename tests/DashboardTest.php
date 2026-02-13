@@ -938,3 +938,29 @@ it('shows regression data when regressions exist', function () {
         ->assertSee('Performance Regressions')
         ->assertSee('App\Listeners\SlowRegressed');
 });
+
+it('shows export trace button on waterfall when OTLP is configured', function () {
+    Config::set('event-lens.otlp_endpoint', 'https://otel.example.com');
+
+    $event = EventLog::factory()->create([
+        'correlation_id' => 'corr-export-ui',
+        'parent_event_id' => null,
+    ]);
+
+    get(route('event-lens.show', 'corr-export-ui'))
+        ->assertOk()
+        ->assertSee('Export Trace');
+});
+
+it('hides export trace button when OTLP is not configured', function () {
+    Config::set('event-lens.otlp_endpoint', null);
+
+    $event = EventLog::factory()->create([
+        'correlation_id' => 'corr-no-export',
+        'parent_event_id' => null,
+    ]);
+
+    get(route('event-lens.show', 'corr-no-export'))
+        ->assertOk()
+        ->assertDontSee('Export Trace');
+});
