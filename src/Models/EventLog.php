@@ -192,7 +192,16 @@ class EventLog extends Model
         return $query->when($listener, function ($q) use ($listener) {
             $escaped = str_replace(['%', '_'], ['\%', '\_'], $listener);
 
-            return $q->whereRaw("listener_name LIKE ? ESCAPE '\\'", ["%{$escaped}%"]);
+            // When filtering roots, match correlations that contain a child with the listener name
+            return $q->where(function ($q) use ($escaped) {
+                $q->whereRaw("listener_name LIKE ? ESCAPE '\\'", ["%{$escaped}%"])
+                  ->orWhereExists(function ($sub) use ($escaped) {
+                      $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                          ->from('event_lens_events as child')
+                          ->whereColumn('child.correlation_id', 'event_lens_events.correlation_id')
+                          ->whereRaw("child.listener_name LIKE ? ESCAPE '\\'", ["%{$escaped}%"]);
+                  });
+            });
         });
     }
 
