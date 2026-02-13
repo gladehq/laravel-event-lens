@@ -46,6 +46,9 @@ class EventLensServiceProvider extends ServiceProvider
         $this->app->singleton(Services\AuditService::class);
         $this->app->singleton(Services\ListenerHealthService::class);
         $this->app->singleton(Services\BlastRadiusService::class);
+        $this->app->singleton(Services\ReplayService::class);
+        $this->app->singleton(Services\RegressionDetector::class);
+        $this->app->singleton(Services\OtlpExporter::class);
 
         if ($this->isEnabled()) {
             $this->app->extend('events', function ($dispatcher, $app) {

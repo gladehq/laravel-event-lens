@@ -16,5 +16,7 @@ Route::group([
     Route::get('/health', [EventLensController::class, 'health'])->name('event-lens.health');
     Route::get('/api/latest', [EventLensController::class, 'latest'])->name('event-lens.api.latest');
     Route::get('/event/{eventId}', [EventLensController::class, 'detail'])->name('event-lens.detail');
+    Route::post('/replay/{eventId}', [EventLensController::class, 'replay'])->name('event-lens.replay');
+    Route::post('/export/{correlationId}', [EventLensController::class, 'export'])->name('event-lens.export');
     Route::get('/{correlationId}', [EventLensController::class, 'show'])->name('event-lens.show');
 });

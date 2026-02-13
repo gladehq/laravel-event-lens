@@ -12,6 +12,9 @@ use GladeHQ\LaravelEventLens\Http\Resources\EventLogResource;
 use GladeHQ\LaravelEventLens\Services\AuditService;
 use GladeHQ\LaravelEventLens\Services\BlastRadiusService;
 use GladeHQ\LaravelEventLens\Services\ListenerHealthService;
+use GladeHQ\LaravelEventLens\Services\OtlpExporter;
+use GladeHQ\LaravelEventLens\Services\RegressionDetector;
+use GladeHQ\LaravelEventLens\Services\ReplayService;
 use GladeHQ\LaravelEventLens\Services\SlaChecker;
 
 class EventLensController extends Controller
@@ -212,8 +215,12 @@ class EventLensController extends Controller
         $blastRadiusService = app(BlastRadiusService::class);
         $blastRadius = $blastRadiusService->calculate();
 
+        // Regression Detection
+        $regressionDetector = app(RegressionDetector::class);
+        $regressions = $regressionDetector->detect();
+
         return view('event-lens::health', compact(
-            'audit', 'healthScores', 'slowThreshold', 'slaCompliance', 'blastRadius'
+            'audit', 'healthScores', 'slowThreshold', 'slaCompliance', 'blastRadius', 'regressions'
         ));
     }
 
@@ -221,6 +228,7 @@ class EventLensController extends Controller
     {
         $event = EventLog::where('event_id', $eventId)->firstOrFail();
         $slowThreshold = (float) config('event-lens.slow_threshold', 100.0);
+        $allowReplay = (bool) config('event-lens.allow_replay', false);
 
         $siblings = EventLog::forCorrelation($event->correlation_id)
             ->orderBy('happened_at')
@@ -230,7 +238,37 @@ class EventLensController extends Controller
         $prevEvent = $currentIndex > 0 ? $siblings[$currentIndex - 1] : null;
         $nextEvent = $currentIndex < $siblings->count() - 1 ? $siblings[$currentIndex + 1] : null;
 
-        return view('event-lens::detail', compact('event', 'slowThreshold', 'prevEvent', 'nextEvent'));
+        return view('event-lens::detail', compact('event', 'slowThreshold', 'prevEvent', 'nextEvent', 'allowReplay'));
+    }
+
+    public function replay(string $eventId)
+    {
+        $event = EventLog::where('event_id', $eventId)->firstOrFail();
+
+        $replayService = app(ReplayService::class);
+        $result = $replayService->replay($event);
+
+        if ($result['success']) {
+            return redirect()->route('event-lens.detail', $eventId)
+                ->with('replay_success', 'Event replayed successfully. A new trace has been created.');
+        }
+
+        return redirect()->route('event-lens.detail', $eventId)
+            ->with('replay_error', $result['error']);
+    }
+
+    public function export(string $correlationId)
+    {
+        $exporter = app(OtlpExporter::class);
+        $result = $exporter->export($correlationId);
+
+        if ($result['success']) {
+            return redirect()->route('event-lens.show', $correlationId)
+                ->with('export_success', 'Trace exported to OTLP endpoint.');
+        }
+
+        return redirect()->route('event-lens.show', $correlationId)
+            ->with('export_error', $result['error']);
     }
 
     public function latest(Request $request)

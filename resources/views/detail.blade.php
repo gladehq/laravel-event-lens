@@ -7,6 +7,37 @@
         <p class="text-sm text-gray-500 mt-1">listening to <span class="font-mono">{{ $event->event_name }}</span></p>
         <p class="text-xs font-mono text-gray-400 mt-1">{{ $event->event_id }}</p>
 
+        @if(session('replay_success'))
+            <div class="mt-3 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-2 rounded-lg">{{ session('replay_success') }}</div>
+        @endif
+        @if(session('replay_error'))
+            <div class="mt-3 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-lg">{{ session('replay_error') }}</div>
+        @endif
+
+        @if($allowReplay && $event->listener_name === 'Event::dispatch' && class_exists($event->event_name))
+            <div x-data="{ confirmReplay: false }" class="mt-3">
+                <button @click="confirmReplay = true"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Replay Event
+                </button>
+                <div x-show="confirmReplay" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="confirmReplay = false">
+                    <div class="bg-white rounded-lg shadow-xl border border-gray-200 p-6 max-w-md mx-4">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Replay this event?</h3>
+                        <p class="text-sm text-gray-600 mb-1">This will re-dispatch <code class="text-xs bg-gray-100 px-1 rounded">{{ class_basename($event->event_name) }}</code> with its original payload.</p>
+                        <p class="text-xs text-amber-600 mb-4">All registered listeners will fire again. Use with caution.</p>
+                        <div class="flex justify-end gap-3">
+                            <button @click="confirmReplay = false" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+                            <form method="POST" action="{{ route('event-lens.replay', $event->event_id) }}">
+                                @csrf
+                                <button type="submit" class="px-3 py-1.5 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700">Confirm Replay</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         {{-- Prev/Next Sibling Navigation --}}
         @if($prevEvent || $nextEvent)
             <div class="flex items-center justify-between mt-4 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

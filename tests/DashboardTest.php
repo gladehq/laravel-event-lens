@@ -858,3 +858,45 @@ it('can view blast radius tab on health page', function () {
         ->assertSee('Blast Radius')
         ->assertSee('Listener Blast Radius');
 });
+
+it('shows replay button on detail page for root events when enabled', function () {
+    Config::set('event-lens.allow_replay', true);
+
+    $event = EventLog::factory()->create([
+        'event_name' => \GladeHQ\LaravelEventLens\Tests\Fixtures\ReplayableEvent::class,
+        'listener_name' => 'Event::dispatch',
+        'parent_event_id' => null,
+    ]);
+
+    get(route('event-lens.detail', $event->event_id))
+        ->assertOk()
+        ->assertSee('Replay Event');
+});
+
+it('hides replay button when config is disabled', function () {
+    Config::set('event-lens.allow_replay', false);
+
+    $event = EventLog::factory()->create([
+        'event_name' => \GladeHQ\LaravelEventLens\Tests\Fixtures\ReplayableEvent::class,
+        'listener_name' => 'Event::dispatch',
+        'parent_event_id' => null,
+    ]);
+
+    get(route('event-lens.detail', $event->event_id))
+        ->assertOk()
+        ->assertDontSee('Replay Event');
+});
+
+it('hides replay button for non-root events', function () {
+    Config::set('event-lens.allow_replay', true);
+
+    $event = EventLog::factory()->create([
+        'event_name' => \GladeHQ\LaravelEventLens\Tests\Fixtures\ReplayableEvent::class,
+        'listener_name' => 'App\Listeners\HandleOrder',
+        'parent_event_id' => 'some-parent',
+    ]);
+
+    get(route('event-lens.detail', $event->event_id))
+        ->assertOk()
+        ->assertDontSee('Replay Event');
+});

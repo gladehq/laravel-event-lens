@@ -195,4 +195,39 @@ return [
         // 'App\Listeners\SendEmail' => 500,
         // 'App\Events\*' => 1000,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Event Replay
+    |--------------------------------------------------------------------------
+    |
+    | Allow re-dispatching previously recorded events from the dashboard.
+    | Disabled by default for safety — enable only in development or staging.
+    |
+    */
+    'allow_replay' => env('EVENT_LENS_ALLOW_REPLAY', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Regression Detection Threshold
+    |--------------------------------------------------------------------------
+    |
+    | Multiplier used to detect performance regressions. A listener's recent
+    | average (last 24h) must exceed its baseline (previous 7d) by this
+    | factor to be flagged. E.g. 2.0 = recent is 2x slower than baseline.
+    |
+    */
+    'regression_threshold' => 2.0,
+
+    /*
+    |--------------------------------------------------------------------------
+    | OpenTelemetry Export
+    |--------------------------------------------------------------------------
+    |
+    | Endpoint for exporting event traces as OTLP spans.
+    | Set to null to disable. Uses Laravel's HTTP client — no extra packages.
+    |
+    */
+    'otlp_endpoint' => env('EVENT_LENS_OTLP_ENDPOINT'),
+    'otlp_service_name' => env('EVENT_LENS_OTLP_SERVICE_NAME'),
 ];
