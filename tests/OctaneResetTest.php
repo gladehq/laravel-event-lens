@@ -2,6 +2,7 @@
 
 use GladeHQ\LaravelEventLens\Services\EventRecorder;
 use GladeHQ\LaravelEventLens\Services\EventLensBuffer;
+use GladeHQ\LaravelEventLens\Services\NplusOneDetector;
 use GladeHQ\LaravelEventLens\Services\RequestContextResolver;
 use GladeHQ\LaravelEventLens\Watchers\WatcherManager;
 use GladeHQ\LaravelEventLens\Watchers\QueryWatcher;
@@ -44,6 +45,19 @@ it('resets request context resolver on octane reset', function () {
 
     $context = $resolver->resolve();
     expect($context['type'])->not->toBe('queue');
+});
+
+it('resets N+1 detector on octane reset', function () {
+    $detector = app(NplusOneDetector::class);
+
+    // reset() should not throw and detector should remain functional
+    $detector->reset();
+
+    $result = $detector->checkQueryPattern([]);
+    expect($result)->toBeNull();
+
+    $result = $detector->checkEventPattern('corr-1', []);
+    expect($result)->toBeNull();
 });
 
 it('reset clears buffer', function () {

@@ -100,6 +100,18 @@ class EventLogFactory extends Factory
         ]);
     }
 
+    public function nplus1(): static
+    {
+        return $this->state(fn () => [
+            'is_nplus1' => true,
+            'side_effects' => [
+                'queries' => 10,
+                'mails' => 0,
+                'nplus1_detail' => '10x SELECT * FROM users WHERE id = ? (query)',
+            ],
+        ]);
+    }
+
     public function withRequestContext(string $type, string $detail): static
     {
         return $this->state(function (array $attributes) use ($type, $detail) {

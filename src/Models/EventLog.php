@@ -29,6 +29,7 @@ use Illuminate\Support\Str;
  * @property bool $is_sla_breach
  * @property bool $has_drift
  * @property array|null $drift_details
+ * @property bool $is_nplus1
  * @property float $execution_time_ms
  * @property \Illuminate\Support\Carbon $happened_at
  * @property \Illuminate\Support\Carbon $created_at
@@ -52,6 +53,7 @@ class EventLog extends Model
         'is_sla_breach' => 'boolean',
         'has_drift' => 'boolean',
         'drift_details' => 'array',
+        'is_nplus1' => 'boolean',
         'happened_at' => 'datetime',
     ];
 
@@ -173,6 +175,11 @@ class EventLog extends Model
     public function scopeWithDrift(Builder $query): Builder
     {
         return $query->where('has_drift', true);
+    }
+
+    public function scopeNplusOne(Builder $query): Builder
+    {
+        return $query->where('is_nplus1', true);
     }
 
     public function scopeWithErrors(Builder $query): Builder

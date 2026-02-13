@@ -21,6 +21,7 @@ class EventRecorder
     protected RequestContextResolver $contextResolver;
     protected SlaChecker $slaChecker;
     protected SchemaTracker $schemaTracker;
+    protected NplusOneDetector $nplusOneDetector;
     protected ?float $samplingRate = null;
     protected ?bool $captureBacktrace = null;
     protected ?int $stormThreshold = null;
@@ -33,6 +34,7 @@ class EventRecorder
         RequestContextResolver $contextResolver,
         SlaChecker $slaChecker,
         SchemaTracker $schemaTracker,
+        NplusOneDetector $nplusOneDetector,
     ) {
         $this->watcher = $watcher;
         $this->buffer = $buffer;
@@ -40,6 +42,7 @@ class EventRecorder
         $this->contextResolver = $contextResolver;
         $this->slaChecker = $slaChecker;
         $this->schemaTracker = $schemaTracker;
+        $this->nplusOneDetector = $nplusOneDetector;
     }
 
     public function capture(string $eventName, string $listenerName, $eventPayload, Closure $callback)
@@ -101,6 +104,7 @@ class EventRecorder
         $this->correlationContext = [];
         $this->stormCounters = [];
         $this->contextResolver->reset();
+        $this->nplusOneDetector->reset();
     }
 
     public function pushCorrelationContext(string $correlationId): void
@@ -159,8 +163,25 @@ class EventRecorder
             $modelInfo = $this->collector->collectModelInfo($eventObj);
             $tags = $this->collector->collectTags($eventObj);
 
+            // Extract query fingerprints before storing side effects (too verbose for DB)
+            $queryFingerprints = $sideEffects['query_fingerprints'] ?? [];
+            unset($sideEffects['query_fingerprints']);
+
             if ($isStorm) {
                 $sideEffects['storm_count'] = $stormCount;
+            }
+
+            // N+1 detection
+            $isNplus1 = false;
+            $queryNplus1 = $this->nplusOneDetector->checkQueryPattern($queryFingerprints);
+            $eventNplus1 = $this->nplusOneDetector->checkEventPattern($correlationId, $this->stormCounters);
+
+            if ($queryNplus1) {
+                $isNplus1 = true;
+                $sideEffects['nplus1_detail'] = "{$queryNplus1['count']}x {$queryNplus1['pattern']} (query)";
+            } elseif ($eventNplus1) {
+                $isNplus1 = true;
+                $sideEffects['nplus1_detail'] = "{$eventNplus1['count']}x {$eventNplus1['event_class']} (event)";
             }
 
             $record = [
@@ -178,6 +199,7 @@ class EventRecorder
                 'execution_time_ms' => $duration,
                 'happened_at' => now(),
                 'is_storm' => $isStorm,
+                'is_nplus1' => $isNplus1,
             ];
 
             if ($tags !== null) {

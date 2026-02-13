@@ -41,6 +41,7 @@ class EventLensServiceProvider extends ServiceProvider
         $this->app->singleton(Services\RequestContextResolver::class);
         $this->app->singleton(Services\SlaChecker::class);
         $this->app->singleton(Services\SchemaTracker::class);
+        $this->app->singleton(Services\NplusOneDetector::class);
         $this->app->singleton(Services\EventRecorder::class);
         $this->app->singleton(Services\AuditService::class);
         $this->app->singleton(Services\ListenerHealthService::class);
@@ -117,6 +118,7 @@ class EventLensServiceProvider extends ServiceProvider
             $this->app->make(Services\EventRecorder::class)->reset();
             $this->app->make(WatcherManager::class)->reset();
             $this->app->make(Services\RequestContextResolver::class)->reset();
+            $this->app->make(Services\NplusOneDetector::class)->reset();
         });
     }
 

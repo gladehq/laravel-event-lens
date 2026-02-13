@@ -97,6 +97,26 @@ it('supports custom watchers via WatcherInterface', function () {
         ->and($results['custom_metric'])->toBe(42);
 });
 
+// -- QueryWatcher fingerprint capture --
+
+it('captures query fingerprints in stop result', function () {
+    $watcher = new QueryWatcher();
+    $watcher->boot();
+
+    $watcher->start();
+
+    event(new \Illuminate\Database\Events\QueryExecuted('SELECT * FROM users WHERE id = 1', [], 0, resolve('db.connection')));
+    event(new \Illuminate\Database\Events\QueryExecuted('SELECT * FROM users WHERE id = 2', [], 0, resolve('db.connection')));
+
+    $result = $watcher->stop();
+
+    expect($result)->toHaveKey('query_fingerprints')
+        ->and($result['query_fingerprints'])->toHaveCount(2)
+        ->and($result['query_fingerprints'][0])->toBe('SELECT * FROM users WHERE id = ?')
+        ->and($result['query_fingerprints'][1])->toBe('SELECT * FROM users WHERE id = ?')
+        ->and($result['queries'])->toBe(2);
+});
+
 // -- QueryWatcher boot idempotency --
 
 it('only registers listeners once even if boot is called multiple times', function () {

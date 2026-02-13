@@ -237,6 +237,16 @@ it('scopes to SLA breach events', function () {
         ->and(EventLog::slaBreaches()->first()->event_id)->toBe('breach');
 });
 
+it('scopes to N+1 events', function () {
+    EventLog::insert([
+        ['event_id' => 'clean', 'correlation_id' => 'c1', 'event_name' => 'App\Events\Clean', 'listener_name' => 'Closure', 'is_nplus1' => false, 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'nplus1', 'correlation_id' => 'c2', 'event_name' => 'App\Events\Heavy', 'listener_name' => 'Closure', 'is_nplus1' => true, 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::nplusOne()->count())->toBe(1)
+        ->and(EventLog::nplusOne()->first()->event_id)->toBe('nplus1');
+});
+
 it('scopes to events with drift', function () {
     EventLog::insert([
         ['event_id' => 'stable', 'correlation_id' => 'c1', 'event_name' => 'App\Events\Stable', 'listener_name' => 'Closure', 'has_drift' => false, 'drift_details' => null, 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
