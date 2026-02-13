@@ -40,6 +40,8 @@ class EventLensServiceProvider extends ServiceProvider
         $this->app->singleton(Collectors\EventCollector::class);
         $this->app->singleton(Services\RequestContextResolver::class);
         $this->app->singleton(Services\EventRecorder::class);
+        $this->app->singleton(Services\AuditService::class);
+        $this->app->singleton(Services\ListenerHealthService::class);
 
         if ($this->isEnabled()) {
             $this->app->extend('events', function ($dispatcher, $app) {
@@ -69,6 +71,7 @@ class EventLensServiceProvider extends ServiceProvider
                 Commands\StatusCommand::class,
                 Commands\ClearCommand::class,
                 Commands\PruneEventLensCommand::class,
+                Commands\AuditCommand::class,
             ]);
         }
 
