@@ -77,4 +77,29 @@ class EventLogFactory extends Factory
             'tags' => $tags,
         ]);
     }
+
+    public function storm(): static
+    {
+        return $this->state(fn () => [
+            'is_storm' => true,
+        ]);
+    }
+
+    public function withRequestContext(string $type, string $detail): static
+    {
+        return $this->state(function (array $attributes) use ($type, $detail) {
+            $payload = $attributes['payload'] ?? [];
+
+            $context = match ($type) {
+                'http' => ['type' => 'http', 'method' => 'GET', 'path' => $detail, 'user_id' => null],
+                'cli' => ['type' => 'cli', 'command' => $detail],
+                'queue' => ['type' => 'queue', 'job' => $detail],
+                default => ['type' => $type],
+            };
+
+            $payload['__request_context'] = $context;
+
+            return ['payload' => $payload];
+        });
+    }
 }

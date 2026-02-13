@@ -88,6 +88,7 @@ it('logs warning when persist fails in recorder', function () {
         app(\GladeHQ\LaravelEventLens\Watchers\WatcherManager::class),
         $buffer,
         app(\GladeHQ\LaravelEventLens\Collectors\EventCollector::class),
+        app(\GladeHQ\LaravelEventLens\Services\RequestContextResolver::class),
     );
 
     $recorder->capture('event.test', 'Closure', [], fn () => true);

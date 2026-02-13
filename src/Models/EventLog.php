@@ -25,6 +25,7 @@ use Illuminate\Support\Str;
  * @property string|null $model_type
  * @property int|null $model_id
  * @property array|null $tags
+ * @property bool $is_storm
  * @property float $execution_time_ms
  * @property \Illuminate\Support\Carbon $happened_at
  * @property \Illuminate\Support\Carbon $created_at
@@ -44,6 +45,7 @@ class EventLog extends Model
         'side_effects' => 'array',
         'model_changes' => 'array',
         'tags' => 'array',
+        'is_storm' => 'boolean',
         'happened_at' => 'datetime',
     ];
 
@@ -150,6 +152,11 @@ class EventLog extends Model
 
             return $q->whereRaw("tags LIKE ? ESCAPE '\\'", ["%{$escaped}%"]);
         });
+    }
+
+    public function scopeStorms(Builder $query): Builder
+    {
+        return $query->where('is_storm', true);
     }
 
     public function scopeWithErrors(Builder $query): Builder

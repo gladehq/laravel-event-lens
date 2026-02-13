@@ -158,4 +158,25 @@ return [
     |
     */
     'buffer_size' => 1000,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Storm Detection Threshold
+    |--------------------------------------------------------------------------
+    |
+    | Number of times the same event class can fire within a single
+    | correlation before it is flagged as a "storm".
+    |
+    */
+    'storm_threshold' => 50,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Stale Threshold (Days)
+    |--------------------------------------------------------------------------
+    |
+    | Events older than this many days are considered stale.
+    |
+    */
+    'stale_threshold_days' => 30,
 ];

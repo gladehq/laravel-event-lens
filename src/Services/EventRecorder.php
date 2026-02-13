@@ -14,17 +14,21 @@ class EventRecorder
 {
     protected array $callStack = [];
     protected array $correlationContext = [];
+    protected array $stormCounters = [];
     protected WatcherManager $watcher;
     protected EventLensBuffer $buffer;
     protected EventCollector $collector;
+    protected RequestContextResolver $contextResolver;
     protected ?float $samplingRate = null;
     protected ?bool $captureBacktrace = null;
+    protected ?int $stormThreshold = null;
 
-    public function __construct(WatcherManager $watcher, EventLensBuffer $buffer, EventCollector $collector)
+    public function __construct(WatcherManager $watcher, EventLensBuffer $buffer, EventCollector $collector, RequestContextResolver $contextResolver)
     {
         $this->watcher = $watcher;
         $this->buffer = $buffer;
         $this->collector = $collector;
+        $this->contextResolver = $contextResolver;
     }
 
     public function capture(string $eventName, string $listenerName, $eventPayload, Closure $callback)
@@ -37,6 +41,12 @@ class EventRecorder
         if (! $this->shouldRecord($eventName, $correlationId)) {
             return $callback();
         }
+
+        $stormKey = "{$correlationId}:{$eventName}";
+        $this->stormCounters[$stormKey] = ($this->stormCounters[$stormKey] ?? 0) + 1;
+        $threshold = $this->stormThreshold ??= (int) config('event-lens.storm_threshold', 50);
+        $isStorm = $this->stormCounters[$stormKey] > $threshold;
+        $stormCount = $this->stormCounters[$stormKey];
 
         $eventId = (string) Str::uuid();
         $this->callStack[] = ['event_id' => $eventId, 'correlation_id' => $correlationId];
@@ -70,7 +80,7 @@ class EventRecorder
             $sideEffects = $this->watcher->stop();
             array_pop($this->callStack);
 
-            $this->persist($eventId, $correlationId, $parentEventId, $eventName, $listenerName, $eventPayload, $sideEffects, $duration, $backtrace, $exception);
+            $this->persist($eventId, $correlationId, $parentEventId, $eventName, $listenerName, $eventPayload, $sideEffects, $duration, $backtrace, $exception, $isStorm, $stormCount);
         }
     }
 
@@ -78,6 +88,8 @@ class EventRecorder
     {
         $this->callStack = [];
         $this->correlationContext = [];
+        $this->stormCounters = [];
+        $this->contextResolver->reset();
     }
 
     public function pushCorrelationContext(string $correlationId): void
@@ -112,6 +124,8 @@ class EventRecorder
         float $duration,
         ?string $backtrace,
         ?string $exception = null,
+        bool $isStorm = false,
+        int $stormCount = 0,
     )
     {
         try {
@@ -123,8 +137,20 @@ class EventRecorder
                 $collectedPayload['__context'] = ['file' => $backtrace];
             }
 
+            // Inject request context on root events only
+            if ($parentEventId === null) {
+                $requestContext = $this->contextResolver->resolve();
+                if ($requestContext !== null && is_array($collectedPayload)) {
+                    $collectedPayload['__request_context'] = $requestContext;
+                }
+            }
+
             $modelInfo = $this->collector->collectModelInfo($eventObj);
             $tags = $this->collector->collectTags($eventObj);
+
+            if ($isStorm) {
+                $sideEffects['storm_count'] = $stormCount;
+            }
 
             $record = [
                 'event_id' => $eventId,
@@ -140,6 +166,7 @@ class EventRecorder
                 'exception' => $exception ? substr($exception, 0, 2048) : null,
                 'execution_time_ms' => $duration,
                 'happened_at' => now(),
+                'is_storm' => $isStorm,
             ];
 
             if ($tags !== null) {

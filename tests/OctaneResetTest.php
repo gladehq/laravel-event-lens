@@ -2,6 +2,7 @@
 
 use GladeHQ\LaravelEventLens\Services\EventRecorder;
 use GladeHQ\LaravelEventLens\Services\EventLensBuffer;
+use GladeHQ\LaravelEventLens\Services\RequestContextResolver;
 use GladeHQ\LaravelEventLens\Watchers\WatcherManager;
 use GladeHQ\LaravelEventLens\Watchers\QueryWatcher;
 use GladeHQ\LaravelEventLens\Watchers\MailWatcher;
@@ -30,6 +31,19 @@ it('reset clears recorder call stack', function () {
 
     // The recorder should work normally after reset
     expect(true)->toBeTrue();
+});
+
+it('resets request context resolver on octane reset', function () {
+    $resolver = app(RequestContextResolver::class);
+
+    $resolver->setQueueJobName('App\Jobs\TestJob');
+    expect($resolver->resolve()['type'])->toBe('queue');
+
+    // Simulate what EventRecorder::reset() does (which Octane triggers)
+    $resolver->reset();
+
+    $context = $resolver->resolve();
+    expect($context['type'])->not->toBe('queue');
 });
 
 it('reset clears buffer', function () {

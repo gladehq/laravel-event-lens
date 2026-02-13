@@ -24,6 +24,7 @@ class EventLensController extends Controller
             'errors' => 'nullable|boolean',
             'payload' => 'nullable|string|max:255',
             'tag' => 'nullable|string|max:255',
+            'storm' => 'nullable|boolean',
         ]);
 
         $slowThreshold = (float) config('event-lens.slow_threshold', 100.0);
@@ -37,6 +38,7 @@ class EventLensController extends Controller
             ->betweenDates($request->get('start_date'), $request->get('end_date'))
             ->when($request->boolean('slow'), fn ($q) => $q->slow($slowThreshold))
             ->when($request->boolean('errors'), fn ($q) => $q->withErrors())
+            ->when($request->boolean('storm'), fn ($q) => $q->storms())
             ->latest('happened_at')
             ->paginate(20);
 

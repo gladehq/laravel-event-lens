@@ -173,6 +173,16 @@ it('escapes LIKE wildcards in tag search', function () {
         ->and(EventLog::forTag('50%')->first()->event_id)->toBe('e1');
 });
 
+it('scopes to storm events', function () {
+    EventLog::insert([
+        ['event_id' => 'normal', 'correlation_id' => 'c1', 'event_name' => 'App\Events\Normal', 'listener_name' => 'Closure', 'is_storm' => false, 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['event_id' => 'storm', 'correlation_id' => 'c2', 'event_name' => 'App\Events\Storm', 'listener_name' => 'Closure', 'is_storm' => true, 'execution_time_ms' => 10, 'happened_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(EventLog::storms()->count())->toBe(1)
+        ->and(EventLog::storms()->first()->event_name)->toBe('App\Events\Storm');
+});
+
 it('can create events using factory', function () {
     EventLog::factory()->count(3)->create();
 

@@ -38,6 +38,7 @@ class EventLensServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(Collectors\EventCollector::class);
+        $this->app->singleton(Services\RequestContextResolver::class);
         $this->app->singleton(Services\EventRecorder::class);
 
         if ($this->isEnabled()) {
@@ -110,6 +111,7 @@ class EventLensServiceProvider extends ServiceProvider
             $this->app->make(Services\EventLensBuffer::class)->flush();
             $this->app->make(Services\EventRecorder::class)->reset();
             $this->app->make(WatcherManager::class)->reset();
+            $this->app->make(Services\RequestContextResolver::class)->reset();
         });
     }
 
