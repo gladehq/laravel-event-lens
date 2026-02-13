@@ -23,6 +23,7 @@ class BlastRadiusService
         // Aggregate stats per listener (excluding Event::dispatch root entries)
         $listeners = EventLog::query()
             ->where('listener_name', '!=', 'Event::dispatch')
+            ->where('listener_name', '!=', 'Closure')
             ->selectRaw('listener_name')
             ->selectRaw('COUNT(*) as total_executions')
             ->selectRaw('AVG(execution_time_ms) as avg_duration')
@@ -42,10 +43,13 @@ class BlastRadiusService
             ->groupBy('parent.listener_name')
             ->pluck('child_count', 'listener_name');
 
-        // Find downstream listeners (which listeners appear as children)
+        // Find downstream listeners (which actual listeners appear as descendants)
+        // Skip Event::dispatch and Closure entries — show real listener class names only
         $downstream = $connection->table('event_lens_events as parent')
             ->join('event_lens_events as child', 'child.parent_event_id', '=', 'parent.event_id')
             ->where('parent.listener_name', '!=', 'Event::dispatch')
+            ->where('child.listener_name', '!=', 'Event::dispatch')
+            ->where('child.listener_name', '!=', 'Closure')
             ->selectRaw('parent.listener_name as parent_listener, child.listener_name as child_listener')
             ->distinct()
             ->get()
