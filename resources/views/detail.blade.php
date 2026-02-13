@@ -99,6 +99,21 @@
                         </dd>
                     </div>
                 @endif
+                @if($event->is_sla_breach)
+                    @php $slaBreach = $event->side_effects['sla_breach'] ?? null; @endphp
+                    <div class="px-5 py-3 flex justify-between">
+                        <dt class="text-sm text-gray-500">SLA Budget</dt>
+                        <dd class="text-sm font-semibold text-red-600">
+                            @if($slaBreach)
+                                {{ number_format($slaBreach['budget_ms'] ?? 0, 1) }}ms budget |
+                                {{ number_format($slaBreach['actual_ms'] ?? $event->execution_time_ms, 1) }}ms actual |
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 border border-red-300 ml-1">BREACH</span>
+                            @else
+                                SLA breached ({{ number_format($event->execution_time_ms, 1) }}ms)
+                            @endif
+                        </dd>
+                    </div>
+                @endif
                 @if($event->payload['__request_context'] ?? null)
                     @php $detailContext = $event->payload['__request_context']; @endphp
                     <div class="px-5 py-3 flex justify-between">
@@ -127,6 +142,9 @@
             </div>
             <div class="p-5 space-y-4">
                 @forelse($event->side_effects ?? [] as $key => $value)
+                    @if(is_array($value) || is_object($value))
+                        @continue
+                    @endif
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-gray-600 capitalize">{{ str_replace('_', ' ', $key) }}</span>
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $value > 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-500' }}">
@@ -155,6 +173,77 @@
                         </div>
                     @endforeach
                 </dl>
+            </div>
+        </div>
+    @endif
+
+    {{-- Schema Drift --}}
+    @if($event->has_drift && !empty($event->drift_details))
+        <div x-data="{ showDrift: true }" class="bg-orange-50 border border-orange-200 rounded-lg shadow-sm overflow-hidden mb-6">
+            <div class="px-5 py-4 border-b border-orange-200 flex items-center justify-between cursor-pointer" @click="showDrift = !showDrift">
+                <h2 class="text-sm font-semibold text-orange-700">Schema Drift Detected</h2>
+                <svg :class="showDrift ? 'rotate-180' : ''" class="w-4 h-4 text-orange-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div x-show="showDrift" x-cloak class="p-5">
+                @if(!empty($event->drift_details['changes']))
+                    <p class="text-xs text-orange-600 mb-3">The event schema has changed from the recorded baseline.</p>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-orange-200">
+                                <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Change</th>
+                                <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Field</th>
+                                <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-orange-100">
+                            @foreach($event->drift_details['changes'] as $change)
+                                <tr>
+                                    <td class="py-2 px-3 text-xs">
+                                        @if(($change['type'] ?? '') === 'added')
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Added</span>
+                                        @elseif(($change['type'] ?? '') === 'removed')
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Removed</span>
+                                        @else
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">{{ ucfirst($change['type'] ?? 'Changed') }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="py-2 px-3 font-mono text-xs text-gray-700">{{ $change['field'] ?? '' }}</td>
+                                    <td class="py-2 px-3 text-xs text-gray-600">
+                                        @if(isset($change['from']) && isset($change['to']))
+                                            <span class="text-red-600">{{ $change['from'] }}</span> &rarr; <span class="text-green-600">{{ $change['to'] }}</span>
+                                        @elseif(isset($change['detail']))
+                                            {{ $change['detail'] }}
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <pre class="text-xs font-mono text-orange-800 bg-orange-100 rounded-lg p-4 overflow-x-auto">{{ json_encode($event->drift_details, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                @endif
+            </div>
+        </div>
+    @endif
+
+    {{-- N+1 Detection --}}
+    @if($event->is_nplus1)
+        @php $nplus1Detail = $event->side_effects['nplus1_detail'] ?? null; @endphp
+        <div class="bg-orange-50 border border-orange-200 rounded-lg shadow-sm overflow-hidden mb-6">
+            <div class="px-5 py-4 border-b border-orange-200">
+                <h2 class="text-sm font-semibold text-orange-700">N+1 Query Detected</h2>
+            </div>
+            <div class="p-5">
+                @if($nplus1Detail)
+                    <details class="text-sm">
+                        <summary class="text-orange-700 font-medium cursor-pointer hover:text-orange-800">View N+1 detail</summary>
+                        <pre class="mt-2 text-xs font-mono text-orange-800 bg-orange-100 rounded-lg p-4 overflow-x-auto">{{ e(is_array($nplus1Detail) ? json_encode($nplus1Detail, JSON_PRETTY_PRINT) : $nplus1Detail) }}</pre>
+                    </details>
+                @else
+                    <p class="text-sm text-orange-700">This listener execution was flagged as an N+1 query pattern ({{ $event->side_effects['queries'] ?? '?' }} queries).</p>
+                @endif
             </div>
         </div>
     @endif

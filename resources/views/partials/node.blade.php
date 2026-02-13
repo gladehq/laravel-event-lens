@@ -36,6 +36,9 @@
                     @endif
                     @include('event-lens::partials.tags-badge', ['tags' => $node->tags])
                     @include('event-lens::partials.storm-badge', ['isStorm' => $node->is_storm])
+                    @include('event-lens::partials.sla-badge', ['isBreach' => $node->is_sla_breach])
+                    @include('event-lens::partials.drift-badge', ['hasDrift' => $node->has_drift])
+                    @include('event-lens::partials.nplus1-badge', ['isNplus1' => $node->is_nplus1])
                 </div>
                 <div x-show="!$store.traceView?.compact">
                     @include('event-lens::partials.payload-summary', ['payload' => $node->payload_summary])

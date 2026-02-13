@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Cache;
 use GladeHQ\LaravelEventLens\Models\EventLog;
 use GladeHQ\LaravelEventLens\Http\Resources\EventLogResource;
 use GladeHQ\LaravelEventLens\Services\AuditService;
+use GladeHQ\LaravelEventLens\Services\BlastRadiusService;
 use GladeHQ\LaravelEventLens\Services\ListenerHealthService;
+use GladeHQ\LaravelEventLens\Services\SlaChecker;
 
 class EventLensController extends Controller
 {
@@ -27,6 +29,9 @@ class EventLensController extends Controller
             'payload' => 'nullable|string|max:255',
             'tag' => 'nullable|string|max:255',
             'storm' => 'nullable|boolean',
+            'sla' => 'nullable|boolean',
+            'drift' => 'nullable|boolean',
+            'nplus1' => 'nullable|boolean',
         ]);
 
         $slowThreshold = (float) config('event-lens.slow_threshold', 100.0);
@@ -41,6 +46,9 @@ class EventLensController extends Controller
             ->when($request->boolean('slow'), fn ($q) => $q->slow($slowThreshold))
             ->when($request->boolean('errors'), fn ($q) => $q->withErrors())
             ->when($request->boolean('storm'), fn ($q) => $q->storms())
+            ->when($request->boolean('sla'), fn ($q) => $q->slaBreaches())
+            ->when($request->boolean('drift'), fn ($q) => $q->withDrift())
+            ->when($request->boolean('nplus1'), fn ($q) => $q->nplusOne())
             ->latest('happened_at')
             ->paginate(20);
 
@@ -115,6 +123,7 @@ class EventLensController extends Controller
                 ),
                 'slow_count' => EventLog::roots()->betweenDates($startDate, $endDate)->slow($slowThreshold)->count(),
                 'storm_count' => EventLog::roots()->betweenDates($startDate, $endDate)->storms()->count(),
+                'sla_breach_count' => EventLog::roots()->betweenDates($startDate, $endDate)->slaBreaches()->count(),
                 'total_queries' => (int) EventLog::roots()->betweenDates($startDate, $endDate)
                     ->selectRaw("SUM({$queriesExpr}) as total")->value('total'),
                 'total_mails' => (int) EventLog::roots()->betweenDates($startDate, $endDate)
@@ -196,7 +205,16 @@ class EventLensController extends Controller
         $healthService = app(ListenerHealthService::class);
         $healthScores = $healthService->scores();
 
-        return view('event-lens::health', compact('audit', 'healthScores', 'slowThreshold'));
+        // SLA Compliance data
+        $slaCompliance = $this->buildSlaCompliance();
+
+        // Blast Radius data
+        $blastRadiusService = app(BlastRadiusService::class);
+        $blastRadius = $blastRadiusService->calculate();
+
+        return view('event-lens::health', compact(
+            'audit', 'healthScores', 'slowThreshold', 'slaCompliance', 'blastRadius'
+        ));
     }
 
     public function detail(string $eventId)
@@ -228,6 +246,65 @@ class EventLensController extends Controller
             ->get();
 
         return EventLogResource::collection($events);
+    }
+
+    /**
+     * Build SLA compliance data from config budgets and actual listener performance.
+     */
+    protected function buildSlaCompliance(): array
+    {
+        $budgets = config('event-lens.sla_budgets', []);
+
+        if (empty($budgets)) {
+            return ['budgets' => collect(), 'total' => 0, 'compliant' => 0, 'breaches_7d' => 0];
+        }
+
+        $sevenDaysAgo = now()->subDays(7);
+        $slaChecker = app(SlaChecker::class);
+
+        $compliance = collect($budgets)->map(function ($budgetMs, $name) use ($sevenDaysAgo) {
+            // Determine if this is a listener or event pattern
+            $query = EventLog::query()
+                ->where('happened_at', '>=', $sevenDaysAgo)
+                ->where(function ($q) use ($name) {
+                    $q->where('listener_name', $name)
+                      ->orWhere('event_name', $name);
+                });
+
+            $totalExecutions = (clone $query)->count();
+            $breachCount = (clone $query)->where('is_sla_breach', true)->count();
+
+            // P95 actual execution time
+            $p95 = 0;
+            if ($totalExecutions > 0) {
+                $offset = (int) ceil($totalExecutions * 0.95) - 1;
+                $p95 = (float) (clone $query)
+                    ->orderBy('execution_time_ms')
+                    ->offset(max(0, $offset))
+                    ->limit(1)
+                    ->value('execution_time_ms');
+            }
+
+            $compliancePct = $totalExecutions > 0
+                ? round((($totalExecutions - $breachCount) / $totalExecutions) * 100, 1)
+                : 100;
+
+            return (object) [
+                'name' => $name,
+                'budget_ms' => (float) $budgetMs,
+                'p95_actual' => round($p95, 2),
+                'breach_count' => $breachCount,
+                'total_executions' => $totalExecutions,
+                'compliance_pct' => $compliancePct,
+            ];
+        })->values();
+
+        return [
+            'budgets' => $compliance,
+            'total' => $compliance->count(),
+            'compliant' => $compliance->where('breach_count', 0)->count(),
+            'breaches_7d' => $compliance->sum('breach_count'),
+        ];
     }
 
     protected function buildTree($events, $parentId = null): array

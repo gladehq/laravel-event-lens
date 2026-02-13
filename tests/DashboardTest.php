@@ -668,3 +668,193 @@ it('shows storm count card on statistics overview', function () {
         ->assertSee('Storm Events')
         ->assertSee('2');
 });
+
+// -- SLA Badge Tests --
+
+it('shows SLA breach badge on stream', function () {
+    EventLog::factory()->root()->slaBreach()->create([
+        'event_name' => 'App\Events\SlowOrder',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.index'))
+        ->assertOk()
+        ->assertSee('SLA');
+});
+
+it('shows drift badge on stream', function () {
+    EventLog::factory()->root()->withDrift(['changes' => [['type' => 'added', 'field' => 'new_field']]])->create([
+        'event_name' => 'App\Events\DriftedEvent',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.index'))
+        ->assertOk()
+        ->assertSee('DRIFT');
+});
+
+it('shows N+1 badge on stream', function () {
+    EventLog::factory()->root()->nplus1()->create([
+        'event_name' => 'App\Events\HeavyQuery',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.index'))
+        ->assertOk()
+        ->assertSee('N+1');
+});
+
+// -- Filter Tests --
+
+it('filters stream by SLA breaches', function () {
+    EventLog::factory()->root()->slaBreach()->create([
+        'event_name' => 'App\Events\SlaBreach',
+        'happened_at' => now(),
+    ]);
+    EventLog::factory()->root()->create([
+        'event_name' => 'App\Events\NormalEvent',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.index', ['sla' => '1']))
+        ->assertOk()
+        ->assertSee('SlaBreach')
+        ->assertDontSee('App\Events\NormalEvent');
+});
+
+it('filters stream by drift events', function () {
+    EventLog::factory()->root()->withDrift(['changes' => []])->create([
+        'event_name' => 'App\Events\DriftedEvent',
+        'happened_at' => now(),
+    ]);
+    EventLog::factory()->root()->create([
+        'event_name' => 'App\Events\StableEvent',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.index', ['drift' => '1']))
+        ->assertOk()
+        ->assertSee('DriftedEvent')
+        ->assertDontSee('App\Events\StableEvent');
+});
+
+it('filters stream by N+1 events', function () {
+    EventLog::factory()->root()->nplus1()->create([
+        'event_name' => 'App\Events\NplusOneEvent',
+        'happened_at' => now(),
+    ]);
+    EventLog::factory()->root()->create([
+        'event_name' => 'App\Events\CleanEvent',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.index', ['nplus1' => '1']))
+        ->assertOk()
+        ->assertSee('NplusOneEvent')
+        ->assertDontSee('App\Events\CleanEvent');
+});
+
+// -- Detail Page SLA/Drift/N+1 Tests --
+
+it('shows SLA breach details on detail page', function () {
+    EventLog::factory()->root()->slaBreach()->create([
+        'event_id' => 'evt-sla-detail',
+        'event_name' => 'App\Events\SlowOrder',
+        'execution_time_ms' => 300,
+        'side_effects' => ['queries' => 0, 'mails' => 0, 'sla_breach' => ['budget_ms' => 200, 'actual_ms' => 300, 'exceeded_by_pct' => 50]],
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.detail', 'evt-sla-detail'))
+        ->assertOk()
+        ->assertSee('SLA Budget')
+        ->assertSee('BREACH')
+        ->assertSee('200.0ms budget');
+});
+
+it('shows drift diff section on detail page', function () {
+    EventLog::factory()->root()->withDrift([
+        'changes' => [
+            ['type' => 'added', 'field' => 'new_field', 'detail' => 'New field appeared'],
+            ['type' => 'removed', 'field' => 'old_field', 'detail' => 'Field removed'],
+        ],
+    ])->create([
+        'event_id' => 'evt-drift-detail',
+        'event_name' => 'App\Events\DriftedEvent',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.detail', 'evt-drift-detail'))
+        ->assertOk()
+        ->assertSee('Schema Drift Detected')
+        ->assertSee('new_field')
+        ->assertSee('old_field')
+        ->assertSee('Added')
+        ->assertSee('Removed');
+});
+
+it('shows N+1 detail section on detail page', function () {
+    EventLog::factory()->root()->nplus1()->create([
+        'event_id' => 'evt-nplus1-detail',
+        'event_name' => 'App\Events\HeavyQuery',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.detail', 'evt-nplus1-detail'))
+        ->assertOk()
+        ->assertSee('N+1 Query Detected')
+        ->assertSee('View N+1 detail');
+});
+
+// -- Statistics SLA Breach Count --
+
+it('shows SLA breach count on statistics', function () {
+    EventLog::factory()->root()->slaBreach()->create(['happened_at' => now()]);
+    EventLog::factory()->root()->slaBreach()->create(['happened_at' => now()]);
+    EventLog::factory()->root()->create(['happened_at' => now()]);
+
+    get(route('event-lens.statistics'))
+        ->assertOk()
+        ->assertSee('SLA Breaches');
+});
+
+// -- Health Page SLA/Blast Radius Tab Tests --
+
+it('can view SLA compliance tab on health page', function () {
+    get(route('event-lens.health'))
+        ->assertOk()
+        ->assertSee('SLA Compliance')
+        ->assertSee('No SLA budgets configured');
+});
+
+it('can view SLA compliance tab with budgets configured', function () {
+    Config::set('event-lens.sla_budgets', [
+        'App\Events\OrderPlaced' => 200,
+    ]);
+
+    EventLog::factory()->root()->slaBreach()->create([
+        'event_name' => 'App\Events\OrderPlaced',
+        'execution_time_ms' => 300,
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.health'))
+        ->assertOk()
+        ->assertSee('SLA Budget Compliance')
+        ->assertSee('Listeners with SLAs')
+        ->assertSee('App\Events\OrderPlaced');
+});
+
+it('can view blast radius tab on health page', function () {
+    EventLog::factory()->create([
+        'event_name' => 'App\Events\OrderPlaced',
+        'listener_name' => 'App\Listeners\ProcessOrder',
+        'parent_event_id' => 'some-parent',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.health'))
+        ->assertOk()
+        ->assertSee('Blast Radius')
+        ->assertSee('Listener Blast Radius');
+});

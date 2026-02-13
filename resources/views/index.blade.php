@@ -119,6 +119,21 @@
                     class="rounded border-gray-300 text-red-600 focus:ring-red-500">
                 <span class="text-sm text-gray-700">Storm events only</span>
             </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" name="sla" value="1" {{ request('sla') ? 'checked' : '' }}
+                    class="rounded border-gray-300 text-red-600 focus:ring-red-500">
+                <span class="text-sm text-gray-700">SLA breaches</span>
+            </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" name="drift" value="1" {{ request('drift') ? 'checked' : '' }}
+                    class="rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                <span class="text-sm text-gray-700">Schema drift</span>
+            </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" name="nplus1" value="1" {{ request('nplus1') ? 'checked' : '' }}
+                    class="rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                <span class="text-sm text-gray-700">N+1 issues</span>
+            </label>
             <div class="flex-1"></div>
             <a href="{{ route('event-lens.index') }}" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Clear</a>
             <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700">
@@ -195,6 +210,15 @@
                                         <template x-if="event.is_storm">
                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-red-600 text-white">STORM</span>
                                         </template>
+                                        <template x-if="event.is_sla_breach">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 border border-red-300">SLA</span>
+                                        </template>
+                                        <template x-if="event.has_drift">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-orange-100 text-orange-700 border border-orange-300">DRIFT</span>
+                                        </template>
+                                        <template x-if="event.is_nplus1">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-orange-100 text-orange-700 border border-orange-300">N+1</span>
+                                        </template>
                                         <template x-if="event.request_context">
                                             <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
                                                 <template x-if="event.request_context.type === 'http'"><span x-text="event.request_context.method + ' ' + event.request_context.path"></span></template>
@@ -262,6 +286,9 @@
                                         @endif
                                         @include('event-lens::partials.tags-badge', ['tags' => $event->tags])
                                         @include('event-lens::partials.storm-badge', ['isStorm' => $event->is_storm])
+                                        @include('event-lens::partials.sla-badge', ['isBreach' => $event->is_sla_breach])
+                                        @include('event-lens::partials.drift-badge', ['hasDrift' => $event->has_drift])
+                                        @include('event-lens::partials.nplus1-badge', ['isNplus1' => $event->is_nplus1])
                                         @include('event-lens::partials.context-badge', ['context' => $event->payload['__request_context'] ?? null])
                                     </div>
                                     <p class="text-xs text-gray-400 truncate mt-0.5">{{ $event->listener_name }}</p>
