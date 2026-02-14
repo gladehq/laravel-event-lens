@@ -199,6 +199,34 @@ class EventRecorder
                 $sideEffects['nplus1_detail'] = "{$eventNplus1['count']}x {$eventNplus1['event_class']} (event)";
             }
 
+            // SLA breach detection
+            $slaBreach = $this->slaChecker->check($eventName, $listenerName, $duration);
+            if ($slaBreach !== null) {
+                $sideEffects['sla_breach'] = $slaBreach;
+
+                try {
+                    $this->alertService->fireIfNeeded('sla_breach', "{$eventName}::{$listenerName}", [
+                        'event' => $eventName,
+                        'listener' => $listenerName,
+                        'budget_ms' => $slaBreach['budget_ms'],
+                        'actual_ms' => $slaBreach['actual_ms'],
+                    ]);
+                } catch (\Throwable) {
+                    // Never break recording
+                }
+            }
+
+            // Schema drift detection (root events only, with re-entrancy guard)
+            $drift = null;
+            if ($parentEventId === null && is_array($collectedPayload) && ! $this->detectingDrift) {
+                $this->detectingDrift = true;
+                try {
+                    $drift = $this->schemaTracker->detectDrift($eventName, $collectedPayload);
+                } finally {
+                    $this->detectingDrift = false;
+                }
+            }
+
             $record = [
                 'event_id' => $eventId,
                 'correlation_id' => $correlationId,
@@ -215,44 +243,11 @@ class EventRecorder
                 'happened_at' => now(),
                 'is_storm' => $isStorm,
                 'is_nplus1' => $isNplus1,
+                'tags' => $tags,
+                'is_sla_breach' => $slaBreach !== null,
+                'has_drift' => $drift !== null,
+                'drift_details' => $drift,
             ];
-
-            if ($tags !== null) {
-                $record['tags'] = $tags;
-            }
-
-            // SLA breach detection
-            $slaBreach = $this->slaChecker->check($eventName, $listenerName, $duration);
-            if ($slaBreach !== null) {
-                $record['is_sla_breach'] = true;
-                $sideEffects['sla_breach'] = $slaBreach;
-                $record['side_effects'] = $sideEffects;
-
-                try {
-                    $this->alertService->fireIfNeeded('sla_breach', "{$eventName}::{$listenerName}", [
-                        'event' => $eventName,
-                        'listener' => $listenerName,
-                        'budget_ms' => $slaBreach['budget_ms'],
-                        'actual_ms' => $slaBreach['actual_ms'],
-                    ]);
-                } catch (\Throwable) {
-                    // Never break recording
-                }
-            }
-
-            // Schema drift detection (root events only, with re-entrancy guard)
-            if ($parentEventId === null && is_array($collectedPayload) && ! $this->detectingDrift) {
-                $this->detectingDrift = true;
-                try {
-                    $drift = $this->schemaTracker->detectDrift($eventName, $collectedPayload);
-                    if ($drift !== null) {
-                        $record['has_drift'] = true;
-                        $record['drift_details'] = $drift;
-                    }
-                } finally {
-                    $this->detectingDrift = false;
-                }
-            }
 
             // Exception context extraction
             if ($exceptionObj !== null) {

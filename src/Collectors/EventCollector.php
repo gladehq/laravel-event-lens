@@ -31,6 +31,9 @@ class EventCollector
 
         if (is_object($event)) {
             foreach ((new \ReflectionClass($event))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+                if (! $property->isInitialized($event)) {
+                    continue;
+                }
                 $value = $property->getValue($event);
 
                 if ($value instanceof Model) {
@@ -119,7 +122,7 @@ class EventCollector
             if (method_exists($data, 'toArray')) {
                 return $this->normalize($data->toArray(), $depth + 1);
             }
-            return $this->normalize((array) $data, $depth + 1);
+            return $this->normalize($this->safeObjectToArray($data), $depth + 1);
         }
 
         if (is_array($data)) {
@@ -139,6 +142,22 @@ class EventCollector
         }
 
         return $data;
+    }
+
+    protected function safeObjectToArray(object $data): array
+    {
+        $result = [];
+        $ref = new \ReflectionClass($data);
+
+        foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+            if (! $property->isInitialized($data)) {
+                $result[$property->getName()] = '[UNINITIALIZED]';
+                continue;
+            }
+            $result[$property->getName()] = $property->getValue($data);
+        }
+
+        return $result;
     }
 
     protected function redact(array $data, int $depth = 0): array

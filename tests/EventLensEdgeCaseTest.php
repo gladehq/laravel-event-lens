@@ -250,3 +250,20 @@ it('handles scalar payload without TypeError', function () {
     expect($log)->not->toBeNull();
     expect($log->event_name)->toBe('event.scalar');
 });
+
+it('handles objects with uninitialized typed properties', function () {
+    $event = new \GladeHQ\LaravelEventLens\Tests\Fixtures\UninitializedPropsEvent();
+
+    Event::listen(\GladeHQ\LaravelEventLens\Tests\Fixtures\UninitializedPropsEvent::class, fn() => true);
+    Event::dispatch($event);
+
+    app(\GladeHQ\LaravelEventLens\Services\EventLensBuffer::class)->flush();
+
+    $log = EventLog::first();
+    expect($log)->not->toBeNull();
+
+    $payload = $log->payload;
+    expect($payload['required'])->toBe('[UNINITIALIZED]');
+    expect($payload['count'])->toBe('[UNINITIALIZED]');
+    expect($payload['initialized'])->toBe('hello');
+});
