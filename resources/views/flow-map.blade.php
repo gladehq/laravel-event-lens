@@ -1,7 +1,7 @@
 @extends('event-lens::layout')
 
 @section('content')
-<div x-data="flowMap()" x-init="init()">
+<div x-data="flowMap()">
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Event Flow Map</h1>
         <div class="flex items-center gap-2">
@@ -39,7 +39,7 @@
                     <button @click="zoomOut()" class="p-1 rounded hover:bg-gray-100 text-gray-500" title="Zoom out">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"/></svg>
                     </button>
-                    <button @click="resetView()" class="p-1 rounded hover:bg-gray-100 text-gray-500" title="Reset view">
+                    <button @click="resetZoom()" class="p-1 rounded hover:bg-gray-100 text-gray-500" title="Reset view">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     </button>
                 </div>
@@ -55,37 +55,36 @@
                         </marker>
                     </defs>
 
-                    <!-- Edges -->
-                    <template x-for="edge in edges" :key="edge.source + '-' + edge.target">
-                        <g>
-                            <line :x1="edge.x1" :y1="edge.y1" :x2="edge.x2" :y2="edge.y2"
-                                  :stroke="edge.error_rate > 10 ? '#EF4444' : edge.avg_ms > 200 ? '#F59E0B' : '#9CA3AF'"
-                                  :stroke-width="Math.min(4, 1 + Math.log2(edge.count))"
-                                  :marker-end="edge.error_rate > 10 ? 'url(#arrowhead-red)' : 'url(#arrowhead)'"
-                                  class="transition-all"/>
-                            <text :x="(edge.x1 + edge.x2) / 2" :y="(edge.y1 + edge.y2) / 2 - 6"
-                                  text-anchor="middle" class="text-[10px] fill-gray-400" x-text="edge.count + 'x'"/>
-                        </g>
-                    </template>
+                    {{-- Edges (server-rendered) --}}
+                    @foreach($graph['edges'] as $edge)
+                        @if(isset($edge['x1']))
+                            <line x1="{{ $edge['x1'] }}" y1="{{ $edge['y1'] }}" x2="{{ $edge['x2'] }}" y2="{{ $edge['y2'] }}"
+                                  stroke="{{ $edge['error_rate'] > 10 ? '#EF4444' : ($edge['avg_ms'] > 200 ? '#F59E0B' : '#9CA3AF') }}"
+                                  stroke-width="{{ min(4, 1 + log($edge['count'] + 1, 2)) }}"
+                                  marker-end="{{ $edge['error_rate'] > 10 ? 'url(#arrowhead-red)' : 'url(#arrowhead)' }}"/>
+                            <text x="{{ ($edge['x1'] + $edge['x2']) / 2 }}" y="{{ ($edge['y1'] + $edge['y2']) / 2 - 6 }}"
+                                  text-anchor="middle" fill="#9CA3AF" font-size="10">{{ $edge['count'] }}x</text>
+                        @endif
+                    @endforeach
 
-                    <!-- Nodes -->
-                    <template x-for="node in nodes" :key="node.id">
-                        <g :transform="'translate(' + node.x + ',' + node.y + ')'" class="cursor-pointer">
-                            <rect :width="node.width" :height="36" rx="6" ry="6"
-                                  :fill="node.type === 'event' ? '#EEF2FF' : '#ECFDF5'"
-                                  :stroke="node.type === 'event' ? '#6366F1' : '#10B981'"
+                    {{-- Nodes (server-rendered) --}}
+                    @foreach($graph['nodes'] as $node)
+                        <g transform="translate({{ $node['x'] }}, {{ $node['y'] }})">
+                            <rect width="{{ $node['width'] }}" height="36" rx="6" ry="6"
+                                  fill="{{ $node['type'] === 'event' ? '#EEF2FF' : '#ECFDF5' }}"
+                                  stroke="{{ $node['type'] === 'event' ? '#6366F1' : '#10B981' }}"
                                   stroke-width="1.5"
                                   x="0" y="-18"/>
-                            <text :x="node.width / 2" y="5" text-anchor="middle"
-                                  :fill="node.type === 'event' ? '#4338CA' : '#047857'"
-                                  class="text-[11px] font-medium" x-text="node.label"/>
+                            <text x="{{ $node['width'] / 2 }}" y="5" text-anchor="middle"
+                                  fill="{{ $node['type'] === 'event' ? '#4338CA' : '#047857' }}"
+                                  font-size="11" font-weight="500">{{ $node['label'] }}</text>
                         </g>
-                    </template>
+                    @endforeach
                 </svg>
             </div>
         </div>
 
-        <!-- Tooltip / Details Table -->
+        {{-- Connection Details Table --}}
         <div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div class="px-5 py-4 border-b border-gray-200">
                 <h2 class="text-sm font-semibold text-gray-700">Connection Details</h2>
@@ -120,90 +119,31 @@
 @push('scripts')
 <script>
 function flowMap() {
+    const defaultViewBox = '{{ $graph['viewBox'] ?? '0 0 900 400' }}';
     return {
-        nodes: [],
-        edges: [],
+        viewBox: defaultViewBox,
         zoom: 1,
-        viewBox: '0 0 900 500',
-        graphData: @json($graph),
-
-        init() {
-            this.layout();
-        },
-
-        layout() {
-            const data = this.graphData;
-            if (!data.nodes.length) return;
-
-            // Separate events and listeners
-            const events = data.nodes.filter(n => n.type === 'event');
-            const listeners = data.nodes.filter(n => n.type === 'listener');
-
-            const nodeWidth = 140;
-            const nodeSpacing = 60;
-            const layerGap = 200;
-            const startX = 40;
-            const startY = 40;
-
-            // Layout: events on left, listeners on right
-            const nodeMap = {};
-
-            events.forEach((node, i) => {
-                node.x = startX;
-                node.y = startY + i * (36 + nodeSpacing);
-                node.width = nodeWidth;
-                nodeMap[node.id] = node;
-            });
-
-            listeners.forEach((node, i) => {
-                node.x = startX + layerGap + nodeWidth;
-                node.y = startY + i * (36 + nodeSpacing);
-                node.width = nodeWidth;
-                nodeMap[node.id] = node;
-            });
-
-            this.nodes = [...events, ...listeners];
-
-            // Layout edges
-            this.edges = data.edges.map(edge => {
-                const src = nodeMap[edge.source];
-                const tgt = nodeMap[edge.target];
-                if (!src || !tgt) return null;
-                return {
-                    ...edge,
-                    x1: src.x + src.width,
-                    y1: src.y,
-                    x2: tgt.x,
-                    y2: tgt.y,
-                };
-            }).filter(Boolean);
-
-            // Adjust viewBox
-            const maxX = Math.max(...this.nodes.map(n => n.x + n.width)) + 60;
-            const maxY = Math.max(...this.nodes.map(n => n.y + 36)) + 60;
-            this.viewBox = `0 0 ${Math.max(900, maxX)} ${Math.max(400, maxY)}`;
-        },
 
         zoomIn() {
             this.zoom = Math.min(3, this.zoom * 1.2);
-            this.updateZoom();
+            this.applyZoom();
         },
 
         zoomOut() {
             this.zoom = Math.max(0.3, this.zoom / 1.2);
-            this.updateZoom();
+            this.applyZoom();
         },
 
-        resetView() {
+        resetZoom() {
             this.zoom = 1;
-            this.layout();
+            this.viewBox = defaultViewBox;
         },
 
-        updateZoom() {
-            const parts = this.viewBox.split(' ').map(Number);
-            const w = parts[2] / this.zoom;
-            const h = parts[3] / this.zoom;
-            this.viewBox = `0 0 ${Math.round(w)} ${Math.round(h)}`;
+        applyZoom() {
+            const base = defaultViewBox.split(' ').map(Number);
+            const w = Math.round(base[2] / this.zoom);
+            const h = Math.round(base[3] / this.zoom);
+            this.viewBox = `0 0 ${w} ${h}`;
         }
     };
 }

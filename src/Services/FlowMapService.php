@@ -68,9 +68,55 @@ class FlowMapService
             ];
         }
 
+        // Layout: events column left, listeners column right
+        $nodeWidth = 180;
+        $nodeSpacing = 56;
+        $layerGap = 220;
+        $startX = 40;
+        $startY = 50;
+
+        $eventNodes = array_values(array_filter($nodes, fn ($n) => $n['type'] === 'event'));
+        $listenerNodes = array_values(array_filter($nodes, fn ($n) => $n['type'] === 'listener'));
+
+        foreach ($eventNodes as $i => &$node) {
+            $node['x'] = $startX;
+            $node['y'] = $startY + $i * (36 + $nodeSpacing);
+            $node['width'] = $nodeWidth;
+        }
+        unset($node);
+
+        foreach ($listenerNodes as $i => &$node) {
+            $node['x'] = $startX + $nodeWidth + $layerGap;
+            $node['y'] = $startY + $i * (36 + $nodeSpacing);
+            $node['width'] = $nodeWidth;
+        }
+        unset($node);
+
+        $positioned = array_merge($eventNodes, $listenerNodes);
+        $nodeMap = [];
+        foreach ($positioned as $n) {
+            $nodeMap[$n['id']] = $n;
+        }
+
+        foreach ($edges as &$edge) {
+            $src = $nodeMap[$edge['source']] ?? null;
+            $tgt = $nodeMap[$edge['target']] ?? null;
+            if ($src && $tgt) {
+                $edge['x1'] = $src['x'] + $src['width'];
+                $edge['y1'] = $src['y'];
+                $edge['x2'] = $tgt['x'];
+                $edge['y2'] = $tgt['y'];
+            }
+        }
+        unset($edge);
+
+        $maxX = max(array_map(fn ($n) => $n['x'] + $n['width'], $positioned)) + 60;
+        $maxY = max(array_map(fn ($n) => $n['y'] + 36, $positioned)) + 60;
+
         return [
-            'nodes' => array_values($nodes),
+            'nodes' => $positioned,
             'edges' => $edges,
+            'viewBox' => '0 0 ' . max(900, (int) $maxX) . ' ' . max(400, (int) $maxY),
         ];
     }
 

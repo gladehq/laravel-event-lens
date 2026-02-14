@@ -23,7 +23,9 @@ it('builds graph nodes from event log data', function () {
     $graph = $service->buildGraph('24h');
 
     expect($graph['nodes'])->toHaveCount(2)
+        ->and($graph)->toHaveKey('viewBox')
         ->and(collect($graph['nodes'])->firstWhere('type', 'event'))->not->toBeNull()
+        ->and(collect($graph['nodes'])->firstWhere('type', 'event'))->toHaveKeys(['x', 'y', 'width'])
         ->and(collect($graph['nodes'])->firstWhere('type', 'listener'))->not->toBeNull();
 });
 
@@ -41,7 +43,8 @@ it('builds edges between events and listeners', function () {
     expect($graph['edges'])->toHaveCount(1)
         ->and($graph['edges'][0]['count'])->toBe(5)
         ->and($graph['edges'][0]['source'])->toBe('event:App\\Events\\OrderPlaced')
-        ->and($graph['edges'][0]['target'])->toBe('listener:App\\Listeners\\ProcessOrder');
+        ->and($graph['edges'][0]['target'])->toBe('listener:App\\Listeners\\ProcessOrder')
+        ->and($graph['edges'][0])->toHaveKeys(['x1', 'y1', 'x2', 'y2']);
 });
 
 it('filters by time range', function () {
