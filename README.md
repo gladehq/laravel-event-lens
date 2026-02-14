@@ -6,11 +6,11 @@ Deep observability for Laravel Events and Listeners with execution tracing, wate
 
 - **Event tracing** - Capture every `dispatch()`, `until()` and listener execution with parent-child hierarchy
 - **Waterfall visualization** - Interactive dashboard showing event execution trees with timing bars
-- **Side-effect tracking** - Count database queries and mails sent per listener via pluggable watchers
+- **Side-effect tracking** - Count database queries, mails, and HTTP calls per listener via pluggable watchers
 - **Payload inspection** - Safe serialization with binary detection, depth limits, string truncation and key redaction
 - **Model change tracking** - Automatic dirty-state capture for Eloquent models in event payloads
 - **Polymorphic model linking** - Associate events with models via `HasEventLens` trait
-- **Exception capture** - Record exceptions thrown during listener execution with error filtering and breakdown
+- **Exception capture** - Record exceptions with file, line, and stack trace context
 - **Event tagging** - Opt-in structured metadata via `Taggable` interface with dashboard filtering
 - **Cross-queue tracing** - Correlation ID propagation through queued jobs
 - **Storm detection** - Flag event chains that fire excessively within a single correlation
@@ -24,6 +24,14 @@ Deep observability for Laravel Events and Listeners with execution tracing, wate
 - **Performance regression detection** - Compare recent execution times against historical baselines to surface slowdowns
 - **Event replay** - Re-dispatch previously recorded events from the dashboard for debugging
 - **OpenTelemetry export** - Export event traces as OTLP spans to any compatible backend (Jaeger, Zipkin, Datadog, etc.)
+- **HTTP watcher** - Track outbound HTTP calls as side effects with counts on stream, waterfall, and statistics
+- **Notification alerts** - Slack, mail, and log alerts for storms, SLA breaches, regressions, and error spikes with cooldown
+- **Event flow map** - Directed graph visualization of event-to-listener relationships with health-colored edges
+- **CLI trace** - `event-lens:trace` command for terminal-based trace inspection with color-coded output
+- **Comparison mode** - Side-by-side before/after period analysis with throughput, latency, and error deltas
+- **CI assertion** - `event-lens:assert-performance` command for gating deployments on SLA compliance
+- **JSON API** - Content negotiation on all dashboard endpoints for programmatic access
+- **Event ignore list** - Exclude specific event patterns from recording even within monitored namespaces
 - **Octane safe** - Automatic state reset between requests
 - **Sampling** - Configurable rate to minimize production overhead
 - **Statistics dashboard** - Tabbed interface (Overview, Performance, Errors) with execution time histogram, event mix composition bar, error breakdown, query load ranking, listener-level drill-down, and daily timeline with error overlay
@@ -58,12 +66,13 @@ All options live in `config/event-lens.php`:
 | `enabled` | `true` | Master switch |
 | `sampling_rate` | `1.0` | 0.0-1.0 (0% to 100%) |
 | `namespaces` | `['App\Events\*']` | Event class patterns to monitor (wildcards supported) |
+| `ignore` | `[]` | Event patterns to exclude even if they match namespaces |
 | `capture_backtrace` | `false` | Record dispatch file/line (dev only, expensive) |
 | `redacted_keys` | `['password', ...]` | Keys redacted from payloads (case-insensitive) |
 | `authorization` | `null` | Closure for dashboard access (default: local env only) |
 | `middleware` | `['web']` | Dashboard route middleware |
 | `path` | `'event-lens'` | Dashboard URL prefix |
-| `watchers` | `[QueryWatcher, MailWatcher]` | Active watcher classes |
+| `watchers` | `[QueryWatcher, MailWatcher, HttpWatcher]` | Active watcher classes |
 | `database_connection` | `null` | Separate DB connection for storage |
 | `prune_after_days` | `7` | Data retention period |
 | `slow_threshold` | `100.0` | Milliseconds to flag as slow |
@@ -75,16 +84,24 @@ All options live in `config/event-lens.php`:
 | `regression_threshold` | `2.0` | Multiplier for flagging performance regressions (e.g. 2.0 = 2x slower) |
 | `otlp_endpoint` | `null` | OTLP endpoint URL for trace export |
 | `otlp_service_name` | `null` | Service name included in OTLP resource attributes |
+| `alerts.enabled` | `false` | Enable anomaly alert notifications |
+| `alerts.channels` | `[]` | Alert channels: `'slack'`, `'mail'`, `'log'` |
+| `alerts.slack_webhook` | `null` | Slack incoming webhook URL |
+| `alerts.mail_to` | `null` | Email address for alert notifications |
+| `alerts.cooldown_minutes` | `15` | Minutes between repeated alerts of the same type |
+| `alerts.on` | `[storm, sla_breach, ...]` | Alert types to enable |
 
 ## Dashboard
 
 Visit `/event-lens` (or your configured path) to access:
 
-- **Stream** - Live event feed with filtering by event name, listener name, payload content, tag content, date range, slow-only and errors-only toggles. Each row shows listener name, inline badges for errors, query counts, mail counts and tags, and a copy-to-clipboard button for correlation IDs.
-- **Statistics** - Tabbed dashboard organized into three views. Always-visible summary cards (total events, avg execution time, slow count, error rate, total queries, total mails) with quick date presets (Today, 7d, 30d). **Overview tab**: daily volume bar chart with error rate dots overlay, execution time distribution histogram (color-coded latency buckets), and event mix composition bar. **Performance tab**: top events by frequency with inline proportional bars and expandable per-listener breakdown, slowest individual events, and heaviest events by query load with inline bars. **Errors tab**: error breakdown grouped by exception type with count badge. All event names link to the stream page for drill-down. Tabs are bookmarkable via URL hash.
-- **Health** - Multi-tab health dashboard with: **Audit** (dead listeners, orphan events, stale listeners), **Listener Health** (per-listener scores with error rate, p95, avg time, and volume breakdown), **SLA Compliance** (budget vs actual with compliance percentage per event/listener), **Blast Radius** (event-to-listener dependency map with error and slow indicators), and **Regressions** (listeners whose recent execution time has spiked compared to baseline, with severity badges).
-- **Waterfall** - Per-correlation execution tree with timing bars, query/mail counts, error and slow counts in the header, error propagation badges on ancestor nodes, "Jump to error" navigation, compact/detailed view toggle, and OTLP trace export button (when configured).
-- **Detail** - Listener-focused header with event context, previous/next sibling navigation within the correlation, payload and correlation ID copy-to-clipboard, expandable exception with collapsible stack trace, model changes rendered as a before/after diff table, tags, side effects, and event replay button (when enabled).
+- **Stream** - Live event feed with filtering by event name, listener name, payload content, tag content, date range, slow-only and errors-only toggles. Each row shows listener name, inline badges for errors, query counts, mail counts, HTTP calls and tags, and a copy-to-clipboard button for correlation IDs. Supports JSON response via `Accept: application/json`.
+- **Statistics** - Tabbed dashboard organized into three views. Always-visible summary cards (total events, avg execution time, slow count, error rate, total queries, total mails) with quick date presets (Today, 7d, 30d). **Overview tab**: daily volume bar chart with error rate dots overlay, execution time distribution histogram (color-coded latency buckets), and event mix composition bar. **Performance tab**: top events by frequency with inline proportional bars and expandable per-listener breakdown, slowest individual events, and heaviest events by query load with inline bars. **Errors tab**: error breakdown grouped by exception type with count badge. All event names link to the stream page for drill-down. Tabs are bookmarkable via URL hash. Supports JSON API.
+- **Health** - Multi-tab health dashboard with: **Audit** (dead listeners, orphan events, stale listeners), **Listener Health** (per-listener scores with error rate, p95, avg time, and volume breakdown), **SLA Compliance** (budget vs actual with compliance percentage per event/listener), **Blast Radius** (event-to-listener dependency map with error and slow indicators), and **Regressions** (listeners whose recent execution time has spiked compared to baseline, with severity badges). Supports JSON API.
+- **Flow Map** - Directed graph visualization of event-to-listener relationships. SVG-based with Alpine.js (no external JS dependencies). Edges are colored by health (green to red), thickness indicates volume. Time range selector (1h, 6h, 24h, 7d) with zoom/pan controls. Click nodes to filter, hover for tooltip with avg latency, count, and error rate.
+- **Compare** - Side-by-side period comparison for before/after analysis. Summary cards showing throughput, average time, and error rate deltas with percentage changes. Per-listener breakdown table with degraded/improved/stable status badges. Preset periods: last hour vs previous, today vs yesterday, this week vs last. Supports JSON API.
+- **Waterfall** - Per-correlation execution tree with timing bars, query/mail/HTTP counts, error and slow counts in the header, error propagation badges on ancestor nodes, "Jump to error" navigation, compact/detailed view toggle, and OTLP trace export button (when configured). Supports JSON API.
+- **Detail** - Listener-focused header with event context, previous/next sibling navigation within the correlation, payload and correlation ID copy-to-clipboard, expandable exception with file/line context and collapsible stack trace, model changes rendered as a before/after diff table, tags, side effects, and event replay button (when enabled).
 
 ### Authorization
 
@@ -152,6 +169,76 @@ When configured, the waterfall page shows an "Export Trace" button that sends th
 - `spanId` derived from the event ID
 - `parentSpanId` linking child spans to their parent
 - Attributes: `event.name`, `event.listener`, `db.query_count`, `mail.count`, `error`, `exception.message`, `event_lens.storm`, `event_lens.sla_breach`
+
+## Notification Alerts
+
+Get notified when anomalies are detected. Supports Slack, mail, and log channels with per-type cooldown to prevent notification fatigue.
+
+```php
+// config/event-lens.php
+'alerts' => [
+    'enabled' => env('EVENT_LENS_ALERTS_ENABLED', false),
+    'channels' => ['slack', 'mail'], // any combination of 'slack', 'mail', 'log'
+    'slack_webhook' => env('EVENT_LENS_SLACK_WEBHOOK'),
+    'mail_to' => env('EVENT_LENS_ALERT_MAIL_TO'),
+    'cooldown_minutes' => 15,
+    'on' => ['storm', 'sla_breach', 'regression', 'error_spike'],
+],
+```
+
+Alerts are checked on a schedule (`event-lens:check-alerts` every 5 minutes when enabled) and inline during event recording for storms and SLA breaches.
+
+## Event Flow Map
+
+The `/event-lens/flow-map` page renders a directed graph showing how events flow through your listeners. Built with Alpine.js and inline SVG — no external JS libraries required.
+
+- Nodes: events (indigo) and listeners (emerald)
+- Edges: colored by health (green to red), thickness proportional to execution count
+- Time range selector: 1h, 6h, 24h, 7d
+- Click nodes to filter, hover for stats (avg latency, count, error rate)
+
+## Comparison Mode
+
+The `/event-lens/comparison` page provides side-by-side period analysis for evaluating the impact of deployments, config changes, or traffic shifts.
+
+- Summary cards: throughput delta, average time delta, error rate delta
+- Per-listener table: sorted by degradation with status badges (degraded/improved/stable)
+- Presets: last hour vs previous, today vs yesterday, this week vs last week
+
+## Event Ignore List
+
+Exclude specific events from recording even if they match monitored namespaces. Uses wildcard patterns:
+
+```php
+// config/event-lens.php
+'ignore' => [
+    'App\Events\Heartbeat',
+    'App\Events\Internal*',
+],
+```
+
+## CI Performance Assertion
+
+Gate deployments on SLA compliance using the `event-lens:assert-performance` command:
+
+```bash
+# In CI pipeline
+php artisan event-lens:assert-performance --format=json --period=24h
+```
+
+Exits with code 0 when all SLA budgets are met, code 1 when breaches are found. The `--format=json` flag outputs machine-readable results for CI parsing.
+
+## JSON API
+
+All dashboard endpoints support content negotiation. Send `Accept: application/json` to receive JSON responses instead of HTML:
+
+```bash
+curl -H "Accept: application/json" https://your-app.com/event-lens
+curl -H "Accept: application/json" https://your-app.com/event-lens/statistics
+curl -H "Accept: application/json" https://your-app.com/event-lens/health
+curl -H "Accept: application/json" https://your-app.com/event-lens/{correlationId}
+curl -H "Accept: application/json" https://your-app.com/event-lens/comparison?preset=day
+```
 
 ## Octane Support
 
@@ -246,6 +333,10 @@ Register in config:
 | `event-lens:clear --force` | Truncate all event data |
 | `event-lens:prune --days=7` | Delete events older than N days |
 | `event-lens:prune --dry-run` | Preview prune without deleting |
+| `event-lens:audit` | Run dead listener and orphan event audit |
+| `event-lens:check-alerts` | Check for anomalies and dispatch alerts |
+| `event-lens:trace {id} [--json]` | Display trace tree for a correlation ID |
+| `event-lens:assert-performance` | Assert SLA compliance (exit 0/1 for CI) |
 
 ## Publishing Views
 
@@ -262,7 +353,7 @@ Views will be published to `resources/views/vendor/event-lens/`.
 | Focus | All request lifecycle | Events and listeners only |
 | Parent-child tracing | No | Yes (correlation + hierarchy) |
 | Waterfall visualization | No | Yes |
-| Side-effect tracking per listener | No | Yes (queries, mails) |
+| Side-effect tracking per listener | No | Yes (queries, mails, HTTP) |
 | Model change tracking | No | Yes (dirty state capture) |
 | Polymorphic model linking | No | Yes |
 | Cross-queue correlation | No | Yes |
@@ -286,6 +377,14 @@ Views will be published to `resources/views/vendor/event-lens/`.
 | Performance regression detection | No | Yes (baseline vs recent comparison) |
 | Event replay | No | Yes (re-dispatch from dashboard) |
 | OpenTelemetry export | No | Yes (OTLP spans, no extra packages) |
+| HTTP call tracking | No | Yes (outbound call counts per listener) |
+| Notification alerts | No | Yes (Slack, mail, log with cooldown) |
+| Event flow map | No | Yes (directed graph visualization) |
+| CLI trace inspection | No | Yes (color-coded terminal output) |
+| Before/after comparison | No | Yes (period-over-period analysis) |
+| CI performance gating | No | Yes (assert-performance command) |
+| JSON API | No | Yes (content negotiation on all endpoints) |
+| Event ignore list | No | Yes (exclude patterns within namespaces) |
 | Footprint | Heavy | Lightweight |
 
 ## License
