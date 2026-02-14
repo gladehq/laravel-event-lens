@@ -36,7 +36,21 @@ return [
         'App\\Events\\*',
         // 'Illuminate\\Auth\\Events\\Login',
     ],
-    
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ignored Events
+    |--------------------------------------------------------------------------
+    |
+    | Events matching these patterns will never be recorded, even if they
+    | match the namespaces above. Wildcards (*) are supported.
+    |
+    */
+    'ignore' => [
+        // 'App\\Events\\Internal*',
+        // 'App\\Events\\Heartbeat',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Capture Backtrace

@@ -1,0 +1,11 @@
+/* EventLens - Pre-built Tailwind CSS */
+/* This is a minimal CSS file for EventLens dashboard */
+/* For production, generate with: npx tailwindcss -o resources/assets/app.css --minify */
+
+/* Reset and base styles */
+*, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; }
+html { line-height: 1.5; -webkit-text-size-adjust: 100%; font-family: ui-sans-serif, system-ui, sans-serif; }
+body { margin: 0; line-height: inherit; }
+
+/* Note: Full Tailwind CSS utilities should be generated via build tool */
+/* This placeholder ensures the asset route works correctly */

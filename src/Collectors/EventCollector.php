@@ -54,6 +54,35 @@ class EventCollector
         ];
     }
 
+    /**
+     * Extract structured context from a thrown exception.
+     */
+    public function extractExceptionContext(?\Throwable $exception): ?array
+    {
+        if ($exception === null) {
+            return null;
+        }
+
+        return [
+            'class' => get_class($exception),
+            'message' => $exception->getMessage(),
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+            'trace' => array_slice(
+                array_map(function ($frame) {
+                    return [
+                        'file' => $frame['file'] ?? null,
+                        'line' => $frame['line'] ?? null,
+                        'class' => $frame['class'] ?? null,
+                        'function' => $frame['function'] ?? null,
+                    ];
+                }, $exception->getTrace()),
+                0,
+                5
+            ),
+        ];
+    }
+
     public function collectTags($event): ?array
     {
         if ($event instanceof Taggable) {

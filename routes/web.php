@@ -18,5 +18,8 @@ Route::group([
     Route::get('/event/{eventId}', [EventLensController::class, 'detail'])->name('event-lens.detail');
     Route::post('/replay/{eventId}', [EventLensController::class, 'replay'])->name('event-lens.replay');
     Route::post('/export/{correlationId}', [EventLensController::class, 'export'])->name('event-lens.export');
+    Route::get('/flow-map', [EventLensController::class, 'flowMap'])->name('event-lens.flow-map');
+    Route::get('/comparison', [EventLensController::class, 'comparison'])->name('event-lens.comparison');
+    Route::get('/assets/{file}', [EventLensController::class, 'asset'])->name('event-lens.asset')->where('file', '.+');
     Route::get('/{correlationId}', [EventLensController::class, 'show'])->name('event-lens.show');
 });

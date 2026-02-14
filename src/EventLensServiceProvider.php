@@ -51,6 +51,8 @@ class EventLensServiceProvider extends ServiceProvider
         $this->app->singleton(Services\RegressionDetector::class);
         $this->app->singleton(Services\OtlpExporter::class);
         $this->app->singleton(Services\AlertService::class);
+        $this->app->singleton(Services\FlowMapService::class);
+        $this->app->singleton(Services\ComparisonService::class);
 
         if ($this->isEnabled()) {
             $this->app->extend('events', function ($dispatcher, $app) {
@@ -82,6 +84,8 @@ class EventLensServiceProvider extends ServiceProvider
                 Commands\PruneEventLensCommand::class,
                 Commands\AuditCommand::class,
                 Commands\CheckAlertsCommand::class,
+                Commands\TraceCommand::class,
+                Commands\AssertPerformanceCommand::class,
             ]);
         }
 
@@ -99,6 +103,13 @@ class EventLensServiceProvider extends ServiceProvider
             $this->registerOctaneReset();
             $this->registerQueueTracing();
         }
+
+        $this->callAfterResolving(\Illuminate\Console\Scheduling\Schedule::class, function ($schedule) {
+            $schedule->command('event-lens:prune')->daily();
+            if (config('event-lens.alerts.enabled')) {
+                $schedule->command('event-lens:check-alerts')->everyFiveMinutes();
+            }
+        });
     }
 
     protected function registerGate(): void
@@ -126,6 +137,7 @@ class EventLensServiceProvider extends ServiceProvider
             $this->app->make(WatcherManager::class)->reset();
             $this->app->make(Services\RequestContextResolver::class)->reset();
             $this->app->make(Services\NplusOneDetector::class)->reset();
+            $this->app->make(Services\SchemaTracker::class)->reset();
         });
     }
 

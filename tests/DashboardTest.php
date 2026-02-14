@@ -988,3 +988,44 @@ it('shows HTTP badge on index for events with http calls', function () {
         ->assertOk()
         ->assertSee('5h');
 });
+
+// -- Vendored Asset Tests --
+
+it('returns json from index when Accept header is application/json', function () {
+    EventLog::factory()->root()->create([
+        'event_name' => 'App\\Events\\JsonTest',
+        'happened_at' => now(),
+    ]);
+
+    $response = $this->getJson(route('event-lens.index'));
+
+    $response->assertOk()
+        ->assertJsonStructure(['data', 'meta']);
+});
+
+it('returns json from show when Accept header is application/json', function () {
+    EventLog::factory()->root()->create([
+        'correlation_id' => 'cor-json-show',
+        'happened_at' => now(),
+    ]);
+
+    $response = $this->getJson(route('event-lens.show', 'cor-json-show'));
+
+    $response->assertOk()
+        ->assertJsonStructure(['correlation_id', 'events', 'summary']);
+});
+
+// -- Vendored Asset Tests --
+
+it('serves vendored assets with correct content type', function () {
+    $jsResponse = get(route('event-lens.asset', ['file' => 'alpine.min.js']));
+    $jsResponse->assertOk();
+    expect($jsResponse->headers->get('Content-Type'))->toContain('application/javascript');
+
+    $cssResponse = get(route('event-lens.asset', ['file' => 'app.css']));
+    $cssResponse->assertOk();
+    expect($cssResponse->headers->get('Content-Type'))->toContain('text/css');
+
+    get(route('event-lens.asset', ['file' => 'evil.php']))
+        ->assertNotFound();
+});

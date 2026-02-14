@@ -86,18 +86,20 @@ class EventRecorder
         }
 
         $exception = null;
+        $exceptionObj = null;
 
         try {
             return $callback();
         } catch (\Throwable $e) {
             $exception = get_class($e) . ': ' . $e->getMessage();
+            $exceptionObj = $e;
             throw $e;
         } finally {
             $duration = (microtime(true) - $startTime) * 1000;
             $sideEffects = $this->watcher->stop();
             array_pop($this->callStack);
 
-            $this->persist($eventId, $correlationId, $parentEventId, $eventName, $listenerName, $eventPayload, $sideEffects, $duration, $backtrace, $exception, $isStorm, $stormCount);
+            $this->persist($eventId, $correlationId, $parentEventId, $eventName, $listenerName, $eventPayload, $sideEffects, $duration, $backtrace, $exception, $isStorm, $stormCount, $exceptionObj);
         }
     }
 
@@ -144,6 +146,7 @@ class EventRecorder
         ?string $exception = null,
         bool $isStorm = false,
         int $stormCount = 0,
+        ?\Throwable $exceptionObj = null,
     )
     {
         try {
@@ -251,6 +254,15 @@ class EventRecorder
                 }
             }
 
+            // Exception context extraction
+            if ($exceptionObj !== null) {
+                $exceptionContext = $this->collector->extractExceptionContext($exceptionObj);
+                if ($exceptionContext !== null) {
+                    $sideEffects['exception_context'] = $exceptionContext;
+                    $record['side_effects'] = $sideEffects;
+                }
+            }
+
             $this->buffer->push($record);
         } catch (\Throwable $e) {
             Log::warning('EventLens: Failed to persist event', [
@@ -263,6 +275,10 @@ class EventRecorder
     protected function shouldRecord($name, $id): bool
     {
         if (! Str::is(config('event-lens.namespaces', []), $name)) {
+            return false;
+        }
+
+        if (Str::is(config('event-lens.ignore', []), $name)) {
             return false;
         }
 

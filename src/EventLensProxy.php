@@ -157,6 +157,8 @@ class EventLensProxy implements DispatcherContract
             return false;
         }
 
+        $ignoreList = config('event-lens.ignore', []);
+
         foreach ((array) $events as $event) {
             $eventName = $this->resolveEventName($event);
 
@@ -165,7 +167,9 @@ class EventLensProxy implements DispatcherContract
             }
 
             if (Str::is($namespaces, $eventName)) {
-                return true;
+                if (! Str::is($ignoreList, $eventName)) {
+                    return true;
+                }
             }
         }
 

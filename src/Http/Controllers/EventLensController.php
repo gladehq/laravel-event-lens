@@ -16,6 +16,7 @@ use GladeHQ\LaravelEventLens\Services\OtlpExporter;
 use GladeHQ\LaravelEventLens\Services\RegressionDetector;
 use GladeHQ\LaravelEventLens\Services\ReplayService;
 use GladeHQ\LaravelEventLens\Services\SlaChecker;
+use GladeHQ\LaravelEventLens\Support\TraceTreeBuilder;
 
 class EventLensController extends Controller
 {
@@ -55,10 +56,14 @@ class EventLensController extends Controller
             ->latest('happened_at')
             ->paginate(20);
 
+        if ($request->wantsJson()) {
+            return response()->json(['data' => $events->items(), 'meta' => ['total' => $events->total(), 'per_page' => $events->perPage()]]);
+        }
+
         return view('event-lens::index', compact('events', 'slowThreshold'));
     }
 
-    public function show(string $correlationId)
+    public function show(Request $request, string $correlationId)
     {
         $events = EventLog::forCorrelation($correlationId)
             ->orderBy('happened_at')
@@ -78,8 +83,15 @@ class EventLensController extends Controller
         $totalSlow = $events->filter(fn ($e) => $e->execution_time_ms > $slowThreshold)->count();
         $firstErrorEventId = $events->firstWhere('exception', '!=', null)?->event_id;
 
-        $tree = $this->buildTree($events);
-        $tree = $this->markDescendantErrors($tree);
+        $tree = TraceTreeBuilder::build($events);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'correlation_id' => $correlationId,
+                'events' => $events->toArray(),
+                'summary' => compact('totalDuration', 'totalQueries', 'totalMails', 'totalHttpCalls', 'totalErrors', 'totalSlow'),
+            ]);
+        }
 
         return view('event-lens::waterfall', compact(
             'tree', 'events', 'totalDuration', 'totalQueries', 'totalMails', 'totalHttpCalls',
@@ -193,6 +205,10 @@ class EventLensController extends Controller
             ];
         });
 
+        if ($request->wantsJson()) {
+            return response()->json($stats);
+        }
+
         return view('event-lens::statistics', compact('stats', 'startDate', 'endDate', 'slowThreshold'));
     }
 
@@ -226,6 +242,10 @@ class EventLensController extends Controller
         // Regression Detection
         $regressionDetector = app(RegressionDetector::class);
         $regressions = $regressionDetector->detect();
+
+        if ($request->wantsJson()) {
+            return response()->json(compact('audit', 'healthScores', 'slaCompliance', 'blastRadius', 'regressions'));
+        }
 
         return view('event-lens::health', compact(
             'audit', 'healthScores', 'slowThreshold', 'slaCompliance', 'blastRadius', 'regressions'
@@ -294,6 +314,58 @@ class EventLensController extends Controller
         return EventLogResource::collection($events);
     }
 
+    public function flowMap(Request $request)
+    {
+        $range = $request->get('range', '24h');
+        $flowMapService = app(\GladeHQ\LaravelEventLens\Services\FlowMapService::class);
+        $graph = $flowMapService->buildGraph($range);
+
+        return view('event-lens::flow-map', compact('graph', 'range'));
+    }
+
+    public function comparison(Request $request)
+    {
+        $preset = $request->get('preset', 'day');
+
+        [$periodAStart, $periodAEnd, $periodBStart, $periodBEnd] = match ($preset) {
+            'hour' => [now()->subHours(2), now()->subHour(), now()->subHour(), now()],
+            'week' => [now()->subWeeks(2), now()->subWeek(), now()->subWeek(), now()],
+            default => [now()->subDays(2), now()->subDay(), now()->subDay(), now()],
+        };
+
+        $service = app(\GladeHQ\LaravelEventLens\Services\ComparisonService::class);
+        $comparison = $service->compare($periodAStart, $periodAEnd, $periodBStart, $periodBEnd);
+
+        if ($request->wantsJson()) {
+            return response()->json($comparison);
+        }
+
+        return view('event-lens::comparison', compact('comparison', 'preset'));
+    }
+
+    public function asset(string $file)
+    {
+        $allowedFiles = [
+            'app.css' => 'text/css',
+            'alpine.min.js' => 'application/javascript',
+        ];
+
+        if (! isset($allowedFiles[$file])) {
+            abort(404);
+        }
+
+        $path = __DIR__.'/../../../resources/assets/'.$file;
+
+        if (! file_exists($path)) {
+            abort(404);
+        }
+
+        return response()->file($path, [
+            'Content-Type' => $allowedFiles[$file],
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
+
     /**
      * Build SLA compliance data from config budgets and actual listener performance.
      */
@@ -353,50 +425,4 @@ class EventLensController extends Controller
         ];
     }
 
-    protected function buildTree($events, $parentId = null): array
-    {
-        $branch = [];
-
-        foreach ($events as $event) {
-            if ($event->parent_event_id === $parentId) {
-                $children = $this->buildTree($events, $event->event_id);
-                $event->setRelation('children', collect($children));
-                $branch[] = $event;
-            }
-        }
-
-        return $branch;
-    }
-
-    protected function markDescendantErrors(array $nodes): array
-    {
-        foreach ($nodes as $node) {
-            if ($node->children && $node->children->count()) {
-                $this->markDescendantErrors($node->children->all());
-            }
-
-            $node->has_descendant_error = $this->hasDescendantError($node);
-        }
-
-        return $nodes;
-    }
-
-    protected function hasDescendantError($node): bool
-    {
-        if (! $node->children || $node->children->isEmpty()) {
-            return false;
-        }
-
-        foreach ($node->children as $child) {
-            if ($child->exception !== null) {
-                return true;
-            }
-
-            if ($this->hasDescendantError($child)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EventLens</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    <script src="{{ route('event-lens.asset', ['file' => 'alpine.min.js']) }}" defer></script>
     <style>
         [x-cloak] { display: none !important; }
     </style>
@@ -24,6 +24,10 @@
                    class="{{ request()->routeIs('event-lens.statistics') ? 'text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-900' }}">Statistics</a>
                 <a href="{{ route('event-lens.health') }}"
                    class="{{ request()->routeIs('event-lens.health') ? 'text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-900' }}">Health</a>
+                <a href="{{ route('event-lens.flow-map') }}"
+                   class="{{ request()->routeIs('event-lens.flow-map') ? 'text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-900' }}">Flow Map</a>
+                <a href="{{ route('event-lens.comparison') }}"
+                   class="{{ request()->routeIs('event-lens.comparison') ? 'text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-900' }}">Compare</a>
             </div>
         </div>
     </nav>

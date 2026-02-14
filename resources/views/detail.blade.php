@@ -300,6 +300,49 @@
         </div>
     @endif
 
+    {{-- Exception Context (Structured) --}}
+    @if(!empty($event->side_effects['exception_context']))
+        @php $exCtx = $event->side_effects['exception_context']; @endphp
+        <div class="bg-red-50 border border-red-200 rounded-lg shadow-sm overflow-hidden mb-6" x-data="{ showCtxTrace: false }">
+            <div class="px-5 py-4 border-b border-red-200">
+                <h2 class="text-sm font-semibold text-red-700">Exception Context</h2>
+            </div>
+            <div class="p-5 space-y-2">
+                <div class="flex items-center gap-4">
+                    <span class="text-xs text-gray-500">Class:</span>
+                    <span class="text-xs font-mono font-semibold text-red-800">{{ $exCtx['class'] ?? 'Unknown' }}</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-xs text-gray-500">File:</span>
+                    <span class="text-xs font-mono text-gray-700">{{ $exCtx['file'] ?? '' }}:{{ $exCtx['line'] ?? '' }}</span>
+                </div>
+                @if(!empty($exCtx['trace']))
+                    <button @click="showCtxTrace = !showCtxTrace" class="mt-2 text-xs text-red-600 hover:text-red-800 underline" x-text="showCtxTrace ? 'Hide trace frames' : 'Show trace frames ({{ count($exCtx['trace']) }})'"></button>
+                    <div x-show="showCtxTrace" x-cloak class="mt-2">
+                        <table class="w-full text-xs">
+                            <thead>
+                                <tr class="border-b border-red-200">
+                                    <th class="text-left py-1 px-2 text-gray-500">#</th>
+                                    <th class="text-left py-1 px-2 text-gray-500">File</th>
+                                    <th class="text-left py-1 px-2 text-gray-500">Class::Method</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-red-100">
+                                @foreach($exCtx['trace'] as $i => $frame)
+                                    <tr>
+                                        <td class="py-1 px-2 text-gray-400">{{ $i }}</td>
+                                        <td class="py-1 px-2 font-mono text-gray-600">{{ basename($frame['file'] ?? '') }}:{{ $frame['line'] ?? '' }}</td>
+                                        <td class="py-1 px-2 font-mono text-gray-700">{{ $frame['class'] ?? '' }}{{ $frame['class'] ? '::' : '' }}{{ $frame['function'] ?? '' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </div>
+        </div>
+    @endif
+
     {{-- Payload --}}
     <div x-data="{ showPayload: true, copiedPayload: false }" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
         <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
