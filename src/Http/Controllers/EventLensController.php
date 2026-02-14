@@ -302,7 +302,7 @@ class EventLensController extends Controller
     public function latest(Request $request)
     {
         $request->validate([
-            'after_id' => 'nullable|integer|min:1',
+            'after_id' => 'nullable|integer|min:0',
         ]);
 
         $events = EventLog::roots()
