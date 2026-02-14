@@ -305,8 +305,10 @@ class EventLensController extends Controller
             'after_id' => 'nullable|integer|min:0',
         ]);
 
+        $afterId = $request->get('after_id');
+
         $events = EventLog::roots()
-            ->when($request->get('after_id'), fn ($q, $id) => $q->where('id', '>', $id))
+            ->when($afterId !== null && $afterId !== '' && (int) $afterId > 0, fn ($q) => $q->where('id', '>', (int) $afterId))
             ->latest('id')
             ->limit(20)
             ->get();
@@ -343,7 +345,7 @@ class EventLensController extends Controller
         return view('event-lens::comparison', compact('comparison', 'preset'));
     }
 
-    public function asset(string $file)
+    public function asset(Request $request, string $file)
     {
         $allowedFiles = [
             'app.css' => 'text/css',
@@ -360,10 +362,13 @@ class EventLensController extends Controller
             abort(404);
         }
 
-        return response()->file($path, [
-            'Content-Type' => $allowedFiles[$file],
-            'Cache-Control' => 'public, max-age=86400',
-        ]);
+        $response = new \Symfony\Component\HttpFoundation\BinaryFileResponse($path);
+        $response->headers->set('Content-Type', $allowedFiles[$file]);
+        $response->setAutoLastModified();
+        $response->setAutoEtag();
+        $response->isNotModified($request);
+
+        return $response;
     }
 
     /**
