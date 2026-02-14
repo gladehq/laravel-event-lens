@@ -45,7 +45,7 @@
                 </div>
             </div>
             <div class="overflow-auto" style="max-height: 600px;">
-                <svg :viewBox="viewBox" class="w-full" style="min-height: 400px;" xmlns="http://www.w3.org/2000/svg">
+                <svg x-effect="$el.setAttribute('viewBox', viewBox)" viewBox="{{ $graph['viewBox'] ?? '0 0 900 400' }}" class="w-full" style="min-height: 400px;" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
                             <polygon points="0 0, 10 3.5, 0 7" fill="#9CA3AF"/>
