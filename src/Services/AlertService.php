@@ -25,11 +25,9 @@ class AlertService
         $cooldownMinutes = (int) config('event-lens.alerts.cooldown_minutes', 15);
         $cooldownKey = "event-lens:alert-cooldown:{$type}:{$subject}";
 
-        if (Cache::has($cooldownKey)) {
+        if (! Cache::add($cooldownKey, true, now()->addMinutes($cooldownMinutes))) {
             return;
         }
-
-        Cache::put($cooldownKey, true, now()->addMinutes($cooldownMinutes));
 
         $channels = config('event-lens.alerts.channels', []);
         $message = "[EventLens] {$type}: {$subject}";

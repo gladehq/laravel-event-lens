@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Log;
 
 class SchemaTracker
 {
+    private array $baselineCache = [];
+
     /**
      * Generate a fingerprint for a payload's key/type structure.
      */
@@ -39,7 +41,10 @@ class SchemaTracker
             ksort($currentSchema);
             $currentFingerprint = $this->fingerprint($payload);
 
-            $baseline = SchemaBaseline::where('event_class', $eventClass)->first();
+            if (! array_key_exists($eventClass, $this->baselineCache)) {
+                $this->baselineCache[$eventClass] = SchemaBaseline::where('event_class', $eventClass)->first();
+            }
+            $baseline = $this->baselineCache[$eventClass];
 
             // First encounter: store baseline, no drift
             if ($baseline === null) {
@@ -80,10 +85,18 @@ class SchemaTracker
      */
     public function storeBaseline(string $eventClass, string $fingerprint, array $schema): void
     {
-        SchemaBaseline::updateOrCreate(
+        $model = SchemaBaseline::updateOrCreate(
             ['event_class' => $eventClass],
             ['fingerprint' => $fingerprint, 'schema' => $schema],
         );
+
+        // Refresh in-memory cache with the freshly persisted model
+        $this->baselineCache[$eventClass] = $model;
+    }
+
+    public function reset(): void
+    {
+        $this->baselineCache = [];
     }
 
     /**

@@ -149,3 +149,16 @@ it('dispatches to multiple channels simultaneously', function () {
         return $request->url() === 'https://hooks.slack.com/test';
     });
 });
+
+it('uses atomic cache add for cooldown', function () {
+    Cache::shouldReceive('add')
+        ->once()
+        ->with('event-lens:alert-cooldown:storm:App\\Events\\Order', true, Mockery::type(\DateTimeInterface::class))
+        ->andReturn(true);
+
+    // Let Log::warning pass through
+    Log::shouldReceive('warning')->once();
+
+    $service = new AlertService();
+    $service->fireIfNeeded('storm', 'App\\Events\\Order', ['event' => 'App\\Events\\Order']);
+});

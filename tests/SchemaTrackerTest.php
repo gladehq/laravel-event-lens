@@ -106,3 +106,50 @@ it('skips __context and __request_context keys', function () {
         ->and($schema)->not->toHaveKey('__context.file')
         ->and($schema)->not->toHaveKey('__request_context.type');
 });
+
+it('caches baseline in memory across calls', function () {
+    $tracker = new SchemaTracker();
+
+    // Enable query logging
+    \Illuminate\Support\Facades\DB::enableQueryLog();
+
+    // First call: stores baseline (triggers DB write + read)
+    $tracker->detectDrift('App\\Events\\CachedTest', ['name' => 'Alice']);
+
+    // Count queries so far
+    $initialCount = count(\Illuminate\Support\Facades\DB::getQueryLog());
+
+    // Second call with same structure: should use cache, no new SELECT
+    $tracker->detectDrift('App\\Events\\CachedTest', ['name' => 'Bob']);
+
+    $finalCount = count(\Illuminate\Support\Facades\DB::getQueryLog());
+
+    // The second call should NOT issue a new SELECT for the baseline
+    // Since fingerprint matches baseline, detectDrift returns null without calling storeBaseline
+    // So no new queries at all
+    expect($finalCount - $initialCount)->toBe(0);
+
+    \Illuminate\Support\Facades\DB::disableQueryLog();
+});
+
+it('clears cache on reset', function () {
+    $tracker = new SchemaTracker();
+
+    \Illuminate\Support\Facades\DB::enableQueryLog();
+
+    // First call: stores baseline
+    $tracker->detectDrift('App\\Events\\ResetTest', ['name' => 'Alice']);
+    $afterFirst = count(\Illuminate\Support\Facades\DB::getQueryLog());
+
+    // Reset the tracker
+    $tracker->reset();
+
+    // Third call: should re-fetch from DB since cache was cleared
+    $tracker->detectDrift('App\\Events\\ResetTest', ['name' => 'Alice']);
+    $afterReset = count(\Illuminate\Support\Facades\DB::getQueryLog());
+
+    // After reset, it should have issued at least one new SELECT query
+    expect($afterReset)->toBeGreaterThan($afterFirst);
+
+    \Illuminate\Support\Facades\DB::disableQueryLog();
+});

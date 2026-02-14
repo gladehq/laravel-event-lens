@@ -179,3 +179,29 @@ it('limits to specified period', function () {
     expect($scores)->toHaveCount(1)
         ->and($scores->first()->listener_name)->toBe('App\Listeners\Recent');
 });
+
+it('calculates p95 correctly with SQL approach', function () {
+    // Create 100 events with execution times from 1 to 100
+    for ($i = 1; $i <= 100; $i++) {
+        EventLog::factory()->create([
+            'event_name' => 'App\\Events\\P95Test',
+            'listener_name' => 'App\\Listeners\\P95Listener',
+            'execution_time_ms' => $i,
+            'exception' => null,
+            'side_effects' => ['queries' => 1],
+            'happened_at' => now()->subHour(),
+        ]);
+    }
+
+    $scores = app(ListenerHealthService::class)->scores();
+    $p95Listener = $scores->firstWhere('listener_name', 'App\\Listeners\\P95Listener');
+
+    // P95 of 1..100 should be 95 (index 94 in 0-based sorted array)
+    expect($p95Listener->p95_latency)->toBe(95.0);
+});
+
+it('returns zero p95 when no data exists', function () {
+    $scores = app(ListenerHealthService::class)->scores();
+
+    expect($scores)->toBeEmpty();
+});

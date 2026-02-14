@@ -40,26 +40,27 @@ class ListenerHealthService
             return collect();
         }
 
-        // Fetch execution times per listener for P95 calculation
-        $timings = EventLog::query()
-            ->select('listener_name', 'event_name', 'execution_time_ms')
-            ->where('listener_name', '!=', 'Event::dispatch')
-            ->where('happened_at', '>=', $since)
-            ->orderBy('listener_name')
-            ->orderBy('event_name')
-            ->orderBy('execution_time_ms')
-            ->get()
-            ->groupBy(fn ($row) => $row->listener_name . '|' . $row->event_name);
+        return $listeners->map(function ($listener) use ($since) {
+            $count = (int) $listener->execution_count;
 
-        return $listeners->map(function ($listener) use ($timings) {
-            $key = $listener->listener_name . '|' . $listener->event_name;
-            $times = $timings->get($key, collect())->pluck('execution_time_ms')->sort()->values();
-
-            $errorRate = $listener->execution_count > 0
-                ? ($listener->error_count / $listener->execution_count) * 100
+            $errorRate = $count > 0
+                ? ($listener->error_count / $count) * 100
                 : 0;
 
-            $p95 = $this->percentile($times, 95);
+            // P95 via SQL OFFSET/LIMIT — no memory explosion
+            $p95 = 0;
+            if ($count > 0) {
+                $offset = (int) floor($count * 0.95) - 1;
+                $p95 = (float) EventLog::query()
+                    ->where('listener_name', $listener->listener_name)
+                    ->where('event_name', $listener->event_name)
+                    ->where('happened_at', '>=', $since)
+                    ->orderBy('execution_time_ms')
+                    ->offset(max(0, $offset))
+                    ->limit(1)
+                    ->value('execution_time_ms');
+            }
+
             $avgQueries = (float) $listener->avg_queries;
 
             $errorPenalty = min(40, $errorRate * 3);
@@ -72,7 +73,7 @@ class ListenerHealthService
                 'listener_name' => $listener->listener_name,
                 'event_name' => $listener->event_name,
                 'score' => $score,
-                'execution_count' => (int) $listener->execution_count,
+                'execution_count' => $count,
                 'error_rate' => round($errorRate, 1),
                 'p95_latency' => round($p95, 2),
                 'avg_queries' => round($avgQueries, 1),
@@ -80,20 +81,5 @@ class ListenerHealthService
         })
             ->sortBy('score')
             ->values();
-    }
-
-    /**
-     * Calculate the Nth percentile from a sorted collection of values.
-     */
-    protected function percentile(Collection $sorted, int $percentile): float
-    {
-        if ($sorted->isEmpty()) {
-            return 0;
-        }
-
-        $index = (int) ceil(($percentile / 100) * $sorted->count()) - 1;
-        $index = max(0, min($index, $sorted->count() - 1));
-
-        return (float) $sorted[$index];
     }
 }
