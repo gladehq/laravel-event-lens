@@ -222,11 +222,22 @@
                                         <template x-if="event.is_nplus1">
                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-orange-100 text-orange-700 border border-orange-300">N+1</span>
                                         </template>
-                                        <template x-if="event.request_context">
-                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
-                                                <template x-if="event.request_context.type === 'http'"><span x-text="event.request_context.method + ' ' + event.request_context.path"></span></template>
-                                                <template x-if="event.request_context.type === 'cli'"><span x-text="'artisan ' + (event.request_context.command || '')"></span></template>
-                                                <template x-if="event.request_context.type === 'queue'"><span x-text="'Queue: ' + (event.request_context.job || '')"></span></template>
+                                        <template x-if="event.request_context && event.request_context.type === 'http'">
+                                            <span class="inline-flex items-center gap-1">
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-700" x-text="event.request_context.method"></span>
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-600" x-text="event.request_context.path"></span>
+                                            </span>
+                                        </template>
+                                        <template x-if="event.request_context && event.request_context.type === 'cli'">
+                                            <span class="inline-flex items-center gap-1">
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-700">CLI</span>
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-600" x-text="event.request_context.command || ''"></span>
+                                            </span>
+                                        </template>
+                                        <template x-if="event.request_context && event.request_context.type === 'queue'">
+                                            <span class="inline-flex items-center gap-1">
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-700">Queue</span>
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-600" x-text="event.request_context.job || ''"></span>
                                             </span>
                                         </template>
                                     </div>

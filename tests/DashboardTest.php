@@ -604,7 +604,8 @@ it('shows request context badge on stream for root events', function () {
 
     get(route('event-lens.index'))
         ->assertOk()
-        ->assertSee('GET /api/orders');
+        ->assertSee('GET')
+        ->assertSee('/api/orders');
 });
 
 // -- Storm Filter Tests --
