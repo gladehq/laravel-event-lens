@@ -69,6 +69,10 @@
                     <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Mails Sent</p>
                     <p class="text-xl font-bold text-gray-900">{{ $totalMails }}</p>
                 </div>
+                <div class="text-right">
+                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">HTTP Calls</p>
+                    <p class="text-xl font-bold text-gray-900">{{ $totalHttpCalls }}</p>
+                </div>
             </div>
         </div>
     </div>

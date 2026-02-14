@@ -964,3 +964,27 @@ it('hides export trace button when OTLP is not configured', function () {
         ->assertOk()
         ->assertDontSee('Export Trace');
 });
+
+// -- HTTP Calls Tests --
+
+it('shows HTTP calls total in waterfall header', function () {
+    EventLog::factory()->root()->withHttpCalls(3)->create([
+        'correlation_id' => 'cor-http',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.show', 'cor-http'))
+        ->assertOk()
+        ->assertViewHas('totalHttpCalls', 3);
+});
+
+it('shows HTTP badge on index for events with http calls', function () {
+    EventLog::factory()->root()->withHttpCalls(5)->create([
+        'event_name' => 'App\Events\HttpEvent',
+        'happened_at' => now(),
+    ]);
+
+    get(route('event-lens.index'))
+        ->assertOk()
+        ->assertSee('5h');
+});

@@ -30,6 +30,7 @@ class EventLensServiceProvider extends ServiceProvider
             $watcherClasses = config('event-lens.watchers', [
                 Watchers\QueryWatcher::class,
                 Watchers\MailWatcher::class,
+                Watchers\HttpWatcher::class,
             ]);
 
             $watchers = array_map(fn ($class) => $app->make($class), $watcherClasses);

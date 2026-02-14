@@ -60,7 +60,7 @@
     </div>
 
     {{-- Summary Cards (Row 2) --}}
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
         <div class="bg-white rounded-lg shadow-sm border border-blue-200 p-5">
             <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Total DB Queries</p>
             <p class="text-3xl font-bold text-blue-600 mt-1">{{ number_format($stats['total_queries']) }}</p>
@@ -68,6 +68,10 @@
         <div class="bg-white rounded-lg shadow-sm border border-green-200 p-5">
             <p class="text-xs font-semibold text-green-600 uppercase tracking-wider">Total Mails Sent</p>
             <p class="text-3xl font-bold text-green-600 mt-1">{{ number_format($stats['total_mails']) }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-orange-200 p-5">
+            <p class="text-xs font-semibold text-orange-600 uppercase tracking-wider">Total HTTP Calls</p>
+            <p class="text-3xl font-bold text-orange-600 mt-1">{{ number_format($stats['total_http_calls']) }}</p>
         </div>
         <div class="bg-white rounded-lg shadow-sm border border-red-200 p-5">
             <p class="text-xs font-semibold text-red-600 uppercase tracking-wider">Storm Events</p>

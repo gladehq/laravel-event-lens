@@ -115,6 +115,7 @@ return [
     'watchers' => [
         \GladeHQ\LaravelEventLens\Watchers\QueryWatcher::class,
         \GladeHQ\LaravelEventLens\Watchers\MailWatcher::class,
+        \GladeHQ\LaravelEventLens\Watchers\HttpWatcher::class,
     ],
 
     /*

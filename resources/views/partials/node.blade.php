@@ -57,6 +57,11 @@
                     {{ $node->side_effects['mails'] }} Mails
                 </span>
             @endif
+            @if(($node->side_effects['http_calls'] ?? 0) > 0)
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                    {{ $node->side_effects['http_calls'] }} HTTP
+                </span>
+            @endif
         </div>
 
         <div class="w-1/4 text-right">

@@ -64,10 +64,17 @@ class EventLogFactory extends Factory
         ]);
     }
 
-    public function withSideEffects(int $queries = 0, int $mails = 0): static
+    public function withSideEffects(int $queries = 0, int $mails = 0, int $httpCalls = 0): static
     {
         return $this->state(fn () => [
-            'side_effects' => ['queries' => $queries, 'mails' => $mails],
+            'side_effects' => ['queries' => $queries, 'mails' => $mails, 'http_calls' => $httpCalls],
+        ]);
+    }
+
+    public function withHttpCalls(int $count): static
+    {
+        return $this->state(fn () => [
+            'side_effects' => ['queries' => 0, 'mails' => 0, 'http_calls' => $count],
         ]);
     }
 

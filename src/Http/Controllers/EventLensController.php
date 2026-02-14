@@ -71,6 +71,7 @@ class EventLensController extends Controller
         $totalDuration = $events->sum('execution_time_ms');
         $totalQueries = $events->sum(fn ($e) => $e->side_effects['queries'] ?? 0);
         $totalMails = $events->sum(fn ($e) => $e->side_effects['mails'] ?? 0);
+        $totalHttpCalls = $events->sum(fn ($e) => $e->side_effects['http_calls'] ?? 0);
         $slowThreshold = (float) config('event-lens.slow_threshold', 100.0);
 
         $totalErrors = $events->filter(fn ($e) => $e->exception !== null)->count();
@@ -81,7 +82,7 @@ class EventLensController extends Controller
         $tree = $this->markDescendantErrors($tree);
 
         return view('event-lens::waterfall', compact(
-            'tree', 'events', 'totalDuration', 'totalQueries', 'totalMails',
+            'tree', 'events', 'totalDuration', 'totalQueries', 'totalMails', 'totalHttpCalls',
             'slowThreshold', 'totalErrors', 'totalSlow', 'firstErrorEventId',
         ));
     }
@@ -116,6 +117,11 @@ class EventLensController extends Controller
                 default => "COALESCE(json_extract(side_effects, '$.mails'), 0)",
             };
 
+            $httpExpr = match ($driver) {
+                'pgsql' => "COALESCE((side_effects::json->>'http_calls')::int, 0)",
+                default => "COALESCE(json_extract(side_effects, '$.http_calls'), 0)",
+            };
+
             return [
                 'total_events' => $totalEvents,
                 'error_count' => $errorCount,
@@ -131,6 +137,8 @@ class EventLensController extends Controller
                     ->selectRaw("SUM({$queriesExpr}) as total")->value('total'),
                 'total_mails' => (int) EventLog::roots()->betweenDates($startDate, $endDate)
                     ->selectRaw("SUM({$mailsExpr}) as total")->value('total'),
+                'total_http_calls' => (int) EventLog::roots()->betweenDates($startDate, $endDate)
+                    ->selectRaw("SUM({$httpExpr}) as total")->value('total'),
                 'slowest_events' => EventLog::roots()
                     ->betweenDates($startDate, $endDate)
                     ->orderByDesc('execution_time_ms')

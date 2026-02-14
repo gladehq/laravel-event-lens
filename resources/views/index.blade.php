@@ -166,6 +166,9 @@
                                         <template x-if="event.side_effects && event.side_effects.mails > 0">
                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" x-text="event.side_effects.mails + 'm'"></span>
                                         </template>
+                                        <template x-if="event.side_effects && event.side_effects.http_calls > 0">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800" x-text="event.side_effects.http_calls + 'h'"></span>
+                                        </template>
                                         <template x-if="event.tags && Object.keys(event.tags).length > 0">
                                             <span x-data="{ showTags: false }" class="relative inline-flex">
                                                 <button type="button" @click.prevent.stop="showTags = true"
@@ -283,6 +286,9 @@
                                         @endif
                                         @if(($event->side_effects['mails'] ?? 0) > 0)
                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">{{ $event->side_effects['mails'] }}m</span>
+                                        @endif
+                                        @if(($event->side_effects['http_calls'] ?? 0) > 0)
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">{{ $event->side_effects['http_calls'] }}h</span>
                                         @endif
                                         @include('event-lens::partials.tags-badge', ['tags' => $event->tags])
                                         @include('event-lens::partials.storm-badge', ['isStorm' => $event->is_storm])
