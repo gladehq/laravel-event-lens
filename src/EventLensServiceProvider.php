@@ -50,6 +50,7 @@ class EventLensServiceProvider extends ServiceProvider
         $this->app->singleton(Services\ReplayService::class);
         $this->app->singleton(Services\RegressionDetector::class);
         $this->app->singleton(Services\OtlpExporter::class);
+        $this->app->singleton(Services\AlertService::class);
 
         if ($this->isEnabled()) {
             $this->app->extend('events', function ($dispatcher, $app) {
@@ -80,6 +81,7 @@ class EventLensServiceProvider extends ServiceProvider
                 Commands\ClearCommand::class,
                 Commands\PruneEventLensCommand::class,
                 Commands\AuditCommand::class,
+                Commands\CheckAlertsCommand::class,
             ]);
         }
 

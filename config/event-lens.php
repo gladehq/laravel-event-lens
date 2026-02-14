@@ -231,4 +231,24 @@ return [
     */
     'otlp_endpoint' => env('EVENT_LENS_OTLP_ENDPOINT'),
     'otlp_service_name' => env('EVENT_LENS_OTLP_SERVICE_NAME'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Alerts
+    |--------------------------------------------------------------------------
+    |
+    | Configure alert notifications for anomalies (storms, SLA breaches,
+    | regressions, error spikes). Alerts respect a per-type cooldown to
+    | avoid notification fatigue.
+    |
+    */
+    'alerts' => [
+        'enabled' => env('EVENT_LENS_ALERTS_ENABLED', false),
+        'channels' => [], // 'slack', 'mail', 'log'
+        'slack_webhook' => env('EVENT_LENS_SLACK_WEBHOOK'),
+        'mail_to' => env('EVENT_LENS_ALERT_MAIL_TO'),
+        'log_channel' => null,
+        'cooldown_minutes' => (int) env('EVENT_LENS_ALERT_COOLDOWN', 15),
+        'on' => ['storm', 'sla_breach', 'regression', 'error_spike'],
+    ],
 ];

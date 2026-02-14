@@ -22,6 +22,7 @@ class EventRecorder
     protected SlaChecker $slaChecker;
     protected SchemaTracker $schemaTracker;
     protected NplusOneDetector $nplusOneDetector;
+    protected AlertService $alertService;
     protected ?float $samplingRate = null;
     protected ?bool $captureBacktrace = null;
     protected ?int $stormThreshold = null;
@@ -35,6 +36,7 @@ class EventRecorder
         SlaChecker $slaChecker,
         SchemaTracker $schemaTracker,
         NplusOneDetector $nplusOneDetector,
+        AlertService $alertService,
     ) {
         $this->watcher = $watcher;
         $this->buffer = $buffer;
@@ -43,6 +45,7 @@ class EventRecorder
         $this->slaChecker = $slaChecker;
         $this->schemaTracker = $schemaTracker;
         $this->nplusOneDetector = $nplusOneDetector;
+        $this->alertService = $alertService;
     }
 
     public function capture(string $eventName, string $listenerName, $eventPayload, Closure $callback)
@@ -169,6 +172,15 @@ class EventRecorder
 
             if ($isStorm) {
                 $sideEffects['storm_count'] = $stormCount;
+                try {
+                    $this->alertService->fireIfNeeded('storm', $eventName, [
+                        'event' => $eventName,
+                        'storm_count' => $stormCount,
+                        'correlation_id' => $correlationId,
+                    ]);
+                } catch (\Throwable) {
+                    // Never break recording
+                }
             }
 
             // N+1 detection
@@ -212,6 +224,17 @@ class EventRecorder
                 $record['is_sla_breach'] = true;
                 $sideEffects['sla_breach'] = $slaBreach;
                 $record['side_effects'] = $sideEffects;
+
+                try {
+                    $this->alertService->fireIfNeeded('sla_breach', "{$eventName}::{$listenerName}", [
+                        'event' => $eventName,
+                        'listener' => $listenerName,
+                        'budget_ms' => $slaBreach['budget_ms'],
+                        'actual_ms' => $slaBreach['actual_ms'],
+                    ]);
+                } catch (\Throwable) {
+                    // Never break recording
+                }
             }
 
             // Schema drift detection (root events only, with re-entrancy guard)
